@@ -5,8 +5,6 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor'
 import 'monaco-editor/esm/vs/language/json/monaco.contribution'
-import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import {
   computed,
   onMounted,
@@ -132,20 +130,7 @@ function registerJsonSnippets() {
   globalAny.__scrapingRuleSnippetsRegistered = true
 }
 
-function ensureMonacoWorkers() {
-  const globalAny = globalThis as any
-  if (globalAny.MonacoEnvironment?.getWorker) return
-
-  globalAny.MonacoEnvironment = {
-    getWorker(_moduleId: unknown, label: string) {
-      if (label === 'json') return new JsonWorker()
-      return new EditorWorker()
-    },
-  }
-}
-
 onMounted(() => {
-  ensureMonacoWorkers()
   const language = props.language ?? 'javascript'
   const uriString = props.modelUri ?? createDefaultModelUri(language)
   modelUri = monaco.Uri.parse(uriString)

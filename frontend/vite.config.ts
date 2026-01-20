@@ -7,6 +7,10 @@ import unocss from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
+import _monacoEditorPlugin from 'vite-plugin-monaco-editor'
+
+const monacoEditorPlugin =
+  (_monacoEditorPlugin as any).default || _monacoEditorPlugin
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -14,6 +18,15 @@ export default defineConfig({
     vue(),
     wails('./bindings'),
     unocss(),
+    monacoEditorPlugin({
+      languageWorkers: ['json', 'editorWorkerService'], // Load only JSON and core editor workers
+      customWorkers: [
+        {
+          label: 'json',
+          entry: 'monaco-editor/esm/vs/language/json/json.worker',
+        },
+      ],
+    }),
     AutoImport({
       imports: [
         'vue',
@@ -31,9 +44,16 @@ export default defineConfig({
     Components({ resolvers: [NaiveUiResolver()] }),
   ],
   resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
+    alias: [
+      {
+        find: '@',
+        replacement: fileURLToPath(new URL('./src', import.meta.url)),
+      },
+      {
+        find: /^monaco-editor$/,
+        replacement: 'monaco-editor/esm/vs/editor/editor.api.js',
+      },
+    ],
   },
   worker: {
     format: 'es',

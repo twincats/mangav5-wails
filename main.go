@@ -36,6 +36,7 @@ func main() {
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
 	browserService := services.NewBrowserService()
+	defer browserService.Cleanup()
 
 	app := application.New(application.Options{
 		Name:        "mangav5-wails3",
@@ -51,7 +52,7 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
-	
+
 	app.OnShutdown(func() {
 		browserService.Cleanup()
 	})
@@ -68,7 +69,7 @@ func main() {
 			Backdrop:                application.MacBackdropTranslucent,
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
-		BackgroundColour: application.NewRGB(27, 38, 54),
+		BackgroundColour: application.NewRGB(16, 16, 20),
 		URL:              "/",
 	})
 
@@ -84,6 +85,9 @@ func main() {
 
 	// Run the application. This blocks until the application has been exited.
 	err := app.Run()
+
+	// Ensure cleanup is called even if OnShutdown was missed
+	browserService.Cleanup()
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

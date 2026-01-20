@@ -27,6 +27,7 @@
     "unplugin-vue-components": "^31.0.0",
     "vfonts": "^0.0.3",
     "vite": "^7.3.1",
+    "vite-plugin-monaco-editor": "^1.1.0",
     "vue-tsc": "^3.2.2"
   }
 }

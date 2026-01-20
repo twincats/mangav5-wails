@@ -12,7 +12,8 @@ import (
 
 // BrowserService menangani operasi scraping menggunakan browser headless
 type BrowserService struct {
-	browser *rod.Browser
+	browser  *rod.Browser
+	launcher *launcher.Launcher
 }
 
 // ScrapeResult menyimpan hasil scraping
@@ -49,10 +50,14 @@ func (s *BrowserService) initBrowser() error {
 		l = l.Bin(path)
 	}
 
+	// Simpan instance launcher untuk keperluan cleanup
+	s.launcher = l
+
 	u := l.MustLaunch()
 
 	// Connect ke browser
 	s.browser = rod.New().ControlURL(u).MustConnect()
+
 	return nil
 }
 
@@ -145,9 +150,16 @@ func (s *BrowserService) Screenshot(url string) (string, error) {
 	return fmt.Sprintf("Screenshot taken, size: %d bytes", len(data)), nil
 }
 
-// Cleanup menutup browser saat aplikasi berhenti
+// Cleanup menutup browser dan membersihkan resource
 func (s *BrowserService) Cleanup() {
 	if s.browser != nil {
-		s.browser.MustClose()
+		_ = s.browser.Close()
+		s.browser = nil
+	}
+
+	// Matikan proses browser via launcher
+	if s.launcher != nil {
+		s.launcher.Kill()
+		s.launcher = nil
 	}
 }

@@ -15,7 +15,7 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
- * Cleanup menutup browser saat aplikasi berhenti
+ * Cleanup menutup browser dan membersihkan resource
  */
 export function Cleanup(): $CancellablePromise<void> {
     return $Call.ByID(3141534450);
