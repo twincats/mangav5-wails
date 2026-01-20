@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=My Product
+Comment=A mangav5-wails3 application
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/mangav5-wails3.exe %u
+Terminal=false
+Type=Application
+Icon=mangav5-wails3.exe
+Categories=Utility;
+StartupWMClass=mangav5-wails3.exe
+
+ 
