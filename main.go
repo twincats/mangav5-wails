@@ -4,6 +4,7 @@ import (
 	"embed"
 	_ "embed"
 	"log"
+	"mangav5/services"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -34,11 +35,14 @@ func main() {
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
+	browserService := services.NewBrowserService()
+
 	app := application.New(application.Options{
 		Name:        "mangav5-wails3",
 		Description: "A demo of using raw HTML & CSS",
 		Services: []application.Service{
 			application.NewService(&GreetService{}),
+			application.NewService(browserService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -46,6 +50,10 @@ func main() {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
+	})
+	
+	app.OnShutdown(func() {
+		browserService.Cleanup()
 	})
 
 	// Create a new window with the necessary options.
