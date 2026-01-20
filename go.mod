@@ -1,4 +1,4 @@
-module changeme
+module mangav5
 
 go 1.25
 
