@@ -140,4 +140,7 @@ const collapsed = ref(true)
 body {
   background: black;
 }
+:root {
+  color-scheme: light dark;
+}
 </style>
