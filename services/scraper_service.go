@@ -21,37 +21,164 @@ type ScraperService struct {
 
 // NewScraperService creates a new instance
 func NewScraperService(bs *BrowserService) *ScraperService {
+	client := resty.New()
+	client.SetCookieJar(nil) // Enable CookieJar
 	return &ScraperService{
 		browserService: bs,
-		client:         resty.New(),
+		client:         client,
 	}
 }
 
 // Scrape executes the scraping rule
 func (s *ScraperService) Scrape(rule SiteRule, overrideURL string) (map[string]interface{}, error) {
 	targetURL := overrideURL
-	if targetURL == "" && rule.Entry != nil {
+	params := make(map[string]interface{})
+
+	// Handle Override URL (User Input)
+	if targetURL != "" {
+		// Case 1: Input is a Full URL (e.g. https://site.com/manga/id/)
+		if strings.HasPrefix(targetURL, "http") {
+			// Try to extract params using Entry URL as a template
+			if rule.Entry != nil && rule.Entry.URL != "" {
+				extracted := s.extractParamsFromURLTemplate(rule.Entry.URL, targetURL)
+				for k, v := range extracted {
+					params[k] = v
+				}
+			}
+
+			// If rule has an entry regex, try to extract ID from the full URL (Override/Supplement)
+			if rule.Entry != nil && rule.Entry.Regex != "" {
+				re, err := regexp.Compile(rule.Entry.Regex)
+				if err == nil {
+					matches := re.FindStringSubmatch(targetURL)
+					names := re.SubexpNames()
+					if len(matches) > 0 {
+						for i, name := range names {
+							if i > 0 && i < len(matches) && name != "" {
+								params[name] = matches[i]
+							}
+						}
+					}
+				}
+			}
+
+			// If "id" is still missing, fallback to legacy suffix matching logic?
+			// The extractParamsFromURLTemplate should cover it, but let's keep the legacy logic as a safe fallback
+			// if the template matching failed (e.g. slightly different URL structure).
+			if _, ok := params["id"]; !ok && rule.Entry != nil && strings.Contains(rule.Entry.URL, "{id}") {
+				// Simple suffix match
+				prefix := strings.Split(rule.Entry.URL, "{id}")[0]
+				if strings.HasPrefix(targetURL, prefix) {
+					idPart := strings.TrimPrefix(targetURL, prefix)
+					idPart = strings.TrimSuffix(idPart, "/")
+					if idPart != "" {
+						params["id"] = idPart
+					}
+				}
+			}
+
+			params["url"] = targetURL
+		} else {
+			// Case 2: Input is just an ID (e.g. my-manga-id)
+			params["id"] = targetURL
+
+			// Construct full URL if Entry URL template exists
+			if rule.Entry != nil && strings.Contains(rule.Entry.URL, "{id}") {
+				targetURL = strings.ReplaceAll(rule.Entry.URL, "{id}", targetURL)
+				params["url"] = targetURL
+			}
+		}
+	} else if rule.Entry != nil {
+		// Case 3: No override, use default Entry URL
 		targetURL = rule.Entry.URL
+		params["url"] = targetURL
 	}
 
 	switch rule.Strategy {
 	case "static":
-		return s.scrapeStatic(targetURL, rule)
+		return s.scrapeStatic(targetURL, rule, params)
 	case "browser":
-		return s.scrapeBrowser(targetURL, rule)
+		return s.scrapeBrowser(targetURL, rule, params)
 	case "api":
-		return s.scrapeAPI(targetURL, rule)
+		return s.scrapeAPI(targetURL, rule, params)
 	case "auto":
 		// Default to static, fallback logic could be added here
-		return s.scrapeStatic(targetURL, rule)
+		return s.scrapeStatic(targetURL, rule, params)
 	default:
 		return nil, fmt.Errorf("unknown strategy: %s", rule.Strategy)
 	}
 }
 
-func (s *ScraperService) scrapeStatic(url string, rule SiteRule) (map[string]interface{}, error) {
+func (s *ScraperService) extractParamsFromURLTemplate(templateStr, urlStr string) map[string]interface{} {
+	params := make(map[string]interface{})
+
+	// Normalize: remove trailing slash from template for robust matching
+	// We will allow optional slash in the regex
+	templateStr = strings.TrimSuffix(templateStr, "/")
+
+	// 1. Escape the template to make it safe for regex
+	regexStr := regexp.QuoteMeta(templateStr)
+
+	// 2. Replace {id} placeholder with named capture group
+	// \{id\} is the escaped version of {id}
+	// We use [^/]+ to match the segment (stops at next slash)
+	regexStr = strings.ReplaceAll(regexStr, "\\{id\\}", "(?P<id>[^/]+)")
+
+	// 3. Anchor and allow optional trailing slash
+	regexStr = "^" + regexStr + "/?$"
+
+	re, err := regexp.Compile(regexStr)
+	if err != nil {
+		return params
+	}
+
+	matches := re.FindStringSubmatch(urlStr)
+	if len(matches) == 0 {
+		return params
+	}
+
+	names := re.SubexpNames()
+	for i, name := range names {
+		if i > 0 && i < len(matches) && name != "" {
+			params[name] = matches[i]
+		}
+	}
+
+	return params
+}
+
+func (s *ScraperService) scrapeStatic(url string, rule SiteRule, params map[string]interface{}) (map[string]interface{}, error) {
 	if url == "" {
 		return nil, fmt.Errorf("url is required for static strategy")
+	}
+
+	// Initialize Context
+	ctx := make(map[string]interface{})
+	for k, v := range params {
+		ctx[k] = v
+	}
+	ctx["url"] = url
+	if _, ok := ctx["id"]; !ok {
+		ctx["id"] = url // Default ID to url if not provided
+	}
+
+	// Extract params from URL if regex provided (Legacy support or secondary extraction)
+	if rule.Entry != nil && rule.Entry.Regex != "" {
+		re, err := regexp.Compile(rule.Entry.Regex)
+		if err == nil {
+			matches := re.FindStringSubmatch(url)
+			names := re.SubexpNames()
+			if len(matches) > 0 {
+				for i, name := range names {
+					if i > 0 && i < len(matches) && name != "" {
+						// Only set if not already set by upstream
+						if _, exists := ctx[name]; !exists {
+							ctx[name] = matches[i]
+						}
+					}
+				}
+			}
+		}
 	}
 
 	req := s.client.R()
@@ -69,12 +196,32 @@ func (s *ScraperService) scrapeStatic(url string, rule SiteRule) (map[string]int
 		return nil, err
 	}
 
-	return s.extractFields(doc.Selection, rule.Extract), nil
+	// Store default selection
+	ctx["__default_selection__"] = doc.Selection
+
+	// Execute API Steps if present
+	if rule.API != nil && len(rule.API.Steps) > 0 {
+		if err := s.executeAPISteps(ctx, rule.API.Steps); err != nil {
+			return nil, err
+		}
+	}
+
+	return s.extractFromContext(ctx, rule.Extract), nil
 }
 
-func (s *ScraperService) scrapeBrowser(url string, rule SiteRule) (map[string]interface{}, error) {
+func (s *ScraperService) scrapeBrowser(url string, rule SiteRule, params map[string]interface{}) (map[string]interface{}, error) {
 	if url == "" {
 		return nil, fmt.Errorf("url is required for browser strategy")
+	}
+
+	// Initialize Context
+	ctx := make(map[string]interface{})
+	for k, v := range params {
+		ctx[k] = v
+	}
+	ctx["url"] = url
+	if _, ok := ctx["id"]; !ok {
+		ctx["id"] = url
 	}
 
 	if err := s.browserService.initBrowser(); err != nil {
@@ -125,16 +272,21 @@ func (s *ScraperService) scrapeBrowser(url string, rule SiteRule) (map[string]in
 	return s.extractFields(doc.Selection, rule.Extract), nil
 }
 
-func (s *ScraperService) scrapeAPI(url string, rule SiteRule) (map[string]interface{}, error) {
+func (s *ScraperService) scrapeAPI(url string, rule SiteRule, params map[string]interface{}) (map[string]interface{}, error) {
 	if rule.API == nil || len(rule.API.Steps) == 0 {
 		return nil, fmt.Errorf("api strategy requires api steps")
 	}
 
 	// Context to store results from steps
 	ctx := make(map[string]interface{})
+	for k, v := range params {
+		ctx[k] = v
+	}
 	ctx["url"] = url
 	// Default 'id' to url for convenience when passing IDs directly
-	ctx["id"] = url
+	if _, ok := ctx["id"]; !ok {
+		ctx["id"] = url
+	}
 
 	// Extract params from URL if regex provided
 	if rule.Entry != nil && rule.Entry.Regex != "" && url != "" {
@@ -152,13 +304,21 @@ func (s *ScraperService) scrapeAPI(url string, rule SiteRule) (map[string]interf
 		}
 	}
 
-	for _, step := range rule.API.Steps {
+	if err := s.executeAPISteps(ctx, rule.API.Steps); err != nil {
+		return nil, err
+	}
+
+	return s.extractFromContext(ctx, rule.Extract), nil
+}
+
+func (s *ScraperService) executeAPISteps(ctx map[string]interface{}, steps []APIStep) error {
+	for _, step := range steps {
 		// Process URL template if needed
-		stepURL := s.processTemplate(step.Request.URL, ctx)
+		stepURL := strings.TrimSpace(s.processTemplate(step.Request.URL, ctx))
 
 		// Check for unreplaced placeholders
 		if strings.Contains(stepURL, "{") && strings.Contains(stepURL, "}") {
-			return nil, fmt.Errorf("step %s failed: URL %s contains unreplaced placeholders. Available keys: %v", step.ID, stepURL, getKeys(ctx))
+			return fmt.Errorf("step %s failed: URL %s contains unreplaced placeholders. Available keys: %v", step.ID, stepURL, getKeys(ctx))
 		}
 
 		req := s.client.R()
@@ -182,46 +342,32 @@ func (s *ScraperService) scrapeAPI(url string, rule SiteRule) (map[string]interf
 		}
 
 		if err != nil {
-			return nil, fmt.Errorf("step %s failed: %w", step.ID, err)
+			return fmt.Errorf("step %s failed: %w", step.ID, err)
 		}
 
 		body := resp.String()
-		
+
 		// Parse response based on type
 		if step.Response == "html" {
-			// If it's HTML, we might need to extract data immediately?
-			// The schema doesn't specify extraction per step, but usually API steps 
-			// build up context or the final step provides data for 'Extract'.
-			// Assuming the last step's response is used for main extraction if not specified otherwise.
-			// But for now, let's store the raw body in context.
 			ctx[step.ID] = body
 			ctx[step.ID+"_raw"] = body
 		} else {
-			// Default JSON
-			// Store as parsed JSON object or raw string?
-			// gjson.Parse(body).Value() gives interface{}
 			ctx[step.ID] = gjson.Parse(body).Value()
 			ctx[step.ID+"_raw"] = body
 		}
 	}
-
-	// For extraction, we need a source. 
-	// The rule.Extract fields might refer to specific steps via 'from'.
-	// If 'from' is missing, what is the default source? probably the last step.
-	
-	// We need a flexible extractor that can handle the map context.
-	// For simplicity, we will assume 'from' is mandatory for API strategy OR we use the last response.
-	
-	return s.extractFromContext(ctx, rule.Extract), nil
+	return nil
 }
 
 // extractFromContext handles extraction when source is a map of step results
 func (s *ScraperService) extractFromContext(ctx map[string]interface{}, rules []FieldRule) map[string]interface{} {
 	result := make(map[string]interface{})
-	
-	// Find default source (last step?)
-	// For now, let's require 'from' or use the first available key if single
-	
+
+	var defaultSource interface{} = ctx
+	if sel, ok := ctx["__default_selection__"]; ok {
+		defaultSource = sel
+	}
+
 	for _, field := range rules {
 		if field.Type == "template" {
 			// Template type always uses the full context (ctx) as source
@@ -236,11 +382,8 @@ func (s *ScraperService) extractFromContext(ctx map[string]interface{}, rules []
 				result[field.Name] = s.extractFieldGeneric(val, field)
 			}
 		} else {
-			// Try to find a default source or use ctx directly (for template)
-			// For non-template, if From is missing, we might default to one of the steps?
-			// But since we don't know which one, let's skip or try the last one added.
-			// Currently, just skipping if not template.
-			result[field.Name] = s.extractFieldGeneric(ctx, field)
+			// Use default source (ctx for API, Selection for Static)
+			result[field.Name] = s.extractFieldGeneric(defaultSource, field)
 		}
 	}
 	return result
@@ -256,6 +399,7 @@ func (s *ScraperService) extractFieldGeneric(source interface{}, field FieldRule
 			var maxLen int
 
 			ctx, isCtx := source.(map[string]interface{})
+			sel, isSel := source.(*goquery.Selection)
 
 			for _, child := range field.Children {
 				var val interface{}
@@ -280,7 +424,34 @@ func (s *ScraperService) extractFieldGeneric(source interface{}, field FieldRule
 					// Recursively extract
 					// Note: extractFieldGeneric expects 'source' to be what the type needs.
 					// If type is json, source should be string or json-compatible.
-					val = s.extractFieldGeneric(childSource, child)
+					
+					// If source is Selection and child is CSS, pass Selection
+					// If source is Selection and child is Template, pass Selection
+					// If source is Selection and child is JSON, extract text? (Handled in extractFields but here we call extractFieldGeneric directly)
+					
+					if isSel {
+						// Special handling for Selection source
+						if child.Type == "css" || child.Type == "template" {
+							val = s.extractFieldGeneric(sel, child)
+						} else if child.Type == "json" {
+							// For JSON child of a template in CSS context (unlikely but possible?)
+							// Treat text as JSON?
+							// Let's defer to extractFieldGeneric which handles json type if source is string
+							// But source is Selection here.
+							// extractFieldGeneric needs to handle Selection for json type?
+							// Currently extractFieldGeneric handles json type by expecting string or object.
+							
+							// Let's make extractFieldGeneric smart enough to handle Selection for JSON type too?
+							// OR extract the text here.
+							// Reuse extractFields logic?
+							// Let's assume child of template in CSS context is usually CSS.
+							val = s.extractFieldGeneric(sel, child)
+						} else {
+							val = s.extractFieldGeneric(sel, child)
+						}
+					} else {
+						val = s.extractFieldGeneric(childSource, child)
+					}
 				}
 
 				childData[child.Name] = val
@@ -322,6 +493,10 @@ func (s *ScraperService) extractFieldGeneric(source interface{}, field FieldRule
 							itemData[k] = v
 						}
 					}
+					// If parent field (template) is marked as multiple, or if children are multiple and parent is template
+					// For a template type, if it produces multiple values, it returns []string (or []interface{})
+					// The previous logic returns ONE string if not explicit loop?
+					// Wait, if children are multiple, the template should probably generate multiple strings.
 					results = append(results, s.processTemplate(field.Template, itemData))
 				}
 				return results
@@ -334,8 +509,11 @@ func (s *ScraperService) extractFieldGeneric(source interface{}, field FieldRule
 		return s.processTemplate(field.Template, source)
 	}
 
-	// If type is css, source must be HTML string
+	// If type is css, source must be HTML string OR Selection (if passed from template parent)
 	if field.Type == "css" {
+		if sel, ok := source.(*goquery.Selection); ok {
+			return s.extractCSS(sel, field)
+		}
 		htmlStr, ok := source.(string)
 		if !ok {
 			return nil
@@ -384,6 +562,26 @@ func (s *ScraperService) extractFields(selection *goquery.Selection, rules []Fie
 
 			// 3. Extract using JSON logic
 			result[rule.Name] = s.extractJSON(jsonStr, rule)
+		} else if rule.Type == "template" {
+			// Template field at the top level of extractFields (CSS/Static context)
+			// It needs to gather data from its children (which might be CSS rules)
+			// And then process the template.
+			
+			// We can reuse extractFieldGeneric but we need to pass the selection as source?
+			// extractFieldGeneric expects source to be map[string]interface{} for template children lookups if using "From"
+			// BUT here in static extraction, children are usually relative CSS selectors.
+			
+			// So we need a special handling for template in CSS context OR adapt extractFieldGeneric.
+			// Let's adapt extractFieldGeneric to handle Selection source for children.
+			
+			// Actually, extractFieldGeneric handles template by extracting children first.
+			// If source is Selection, we need to handle that in the children loop.
+			
+			// BUT extractFieldGeneric implementation for template expects source to be map if using From?
+			// No, let's look at extractFieldGeneric again.
+			
+			result[rule.Name] = s.extractFieldGeneric(selection, rule)
+
 		} else {
 			// Default to CSS extraction
 			result[rule.Name] = s.extractCSS(selection, rule)
