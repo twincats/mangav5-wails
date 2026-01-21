@@ -132,22 +132,39 @@ export const scrapingRuleSnippets = [
     kind: 27,
     insertText: `{
   "site": "\${1:Mangadex}",
-  "domains": [\${2:"api.mangadex.org","mangadex.org"}],
+  "domains": ["\${2:mangadex.org}"],
   "strategy": "api",
+  "entry": {
+    "url": "\${3:https://mangadex.org/title/829141f2-192a-4422-a9b1-2b63458e6981}",
+    "regex": "/title/(?P<id>[^/]+)"
+  },
   "api": {
     "steps": [
       {
-        "id": "\${3:step1}",
-        "request": {"url": "\${4:http://api.mangadex.org/manga/{id}}"}
+        "id": "\${4:step1}",
+        "request": {"url": "\${5:https://api.mangadex.org/at-home/server/{id}}"}
       }
     ]
   },
   "extract": [
     {
-      "name": "title",
+      "name": "pages",
       "type": "json",
-      "from": "\${3:step1}",
-      "path": "\$5{$.data.attributes.title['ja-ro']}"
+      "from": "\${4:step1}",
+      "path": "chapter.data",
+      "multiple": true,
+      "children": [
+        {
+          "name": "image_url",
+          "type": "template",
+          "template": "{baseUrl}/data/{hash}/{file}",
+          "children": [
+             {"name": "baseUrl", "type": "json", "from": "step1", "path": "baseUrl"},
+             {"name": "hash", "type": "json", "from": "step1", "path": "chapter.hash"},
+             {"name": "file", "type": "template", "template": "{_self}"}
+          ]
+        }
+      ]
     }
   ]
 }`,

@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Scraper Rule Schema v2",
+  "type": "object",
+  "required": ["site", "domains", "strategy", "extract"],
+
+  "properties": {
+    "site": { "type": "string", "minLength": 1 },
+
+    "domains": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+
+    "strategy": {
+      "type": "string",
+      "enum": ["static", "browser", "api", "auto"]
+    },
+
+    "entry": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "method": { "type": "string" },
+        "regex": { "type": "string" },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "required": ["url"]
+    },
+
+    "wait_config": {
+      "type": "object",
+      "properties": {
+        "container_selectors": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "content_selectors": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "min_text_length": { "type": "integer" },
+        "require_image_loaded": { "type": "boolean" },
+        "timeout_ms": { "type": "integer" },
+        "poll_ms": { "type": "integer" },
+        "skip_waits": { "type": "boolean" },
+        "skip_render_stable": { "type": "boolean" },
+        "skip_navigation_wait": { "type": "boolean" },
+        "navigation_timeout_ms": { "type": "integer" }
+      }
+    },
+
+    "api": {
+      "type": "object",
+      "required": ["steps"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/apiStep" }
+        }
+      }
+    },
+
+    "extract": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/fieldRule" }
+    }
+  },
+
+  "allOf": [
+    {
+      "if": { "properties": { "strategy": { "const": "api" } } },
+      "then": { "required": ["api"] }
+    },
+    {
+      "if": { "properties": { "strategy": { "enum": ["static", "browser"] } } },
+      "then": { "required": ["entry"] }
+    },
+    {
+      "if": { "properties": { "strategy": { "const": "auto" } } },
+      "then": {
+        "anyOf": [{ "required": ["api"] }, { "required": ["entry"] }]
+      }
+    }
+  ],
+
+  "definitions": {
+    "apiStep": {
+      "type": "object",
+      "required": ["id", "request"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+        },
+        "request": {
+          "$ref": "#/definitions/apiRequest"
+        },
+        "response": {
+          "type": "string",
+          "enum": ["json", "html"],
+          "default": "json"
+        }
+      }
+    },
+
+    "apiRequest": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "url": { "type": "string" },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+
+    "fieldRule": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+        },
+
+        "type": {
+          "type": "string",
+          "enum": ["css", "json", "template"]
+        },
+
+        "from": { "type": "string" },
+
+        "selector": { "type": "string" },
+        "attr": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+
+        "filter": { "type": "string" },
+        "filter_mode": {
+          "type": "string",
+          "enum": ["has", "not"],
+          "default": "has"
+        },
+
+        "path": { "type": "string" },
+
+        "multiple": { "type": "boolean", "default": false },
+        "trim": { "type": "boolean", "default": false },
+
+        "regex": { "type": "string" },
+
+        "template": { "type": "string" },
+
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/fieldRule" }
+        }
+      },
+
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "json" } } },
+          "then": { "required": ["path"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "template" } } },
+          "then": { "required": ["template"] }
+        }
+      ]
+    }
+  }
+}

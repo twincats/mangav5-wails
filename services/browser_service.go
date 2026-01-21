@@ -150,6 +150,21 @@ func (s *BrowserService) Screenshot(url string) (string, error) {
 	return fmt.Sprintf("Screenshot taken, size: %d bytes", len(data)), nil
 }
 
+// ScrapFull mengambil seluruh HTML halaman setelah render selesai
+func (s *BrowserService) ScrapFull(url string) (string, error) {
+	if err := s.initBrowser(); err != nil {
+		return "", fmt.Errorf("failed to init browser: %w", err)
+	}
+	page := s.browser.MustPage(url)
+	defer page.Close()
+
+	// Tunggu hingga halaman stabil (network idle & tidak ada perubahan DOM)
+	// Ini penting untuk website SPA atau yang menggunakan banyak JS
+	page.MustWaitStable()
+
+	return page.MustHTML(), nil
+}
+
 // Cleanup menutup browser dan membersihkan resource
 func (s *BrowserService) Cleanup() {
 	if s.browser != nil {

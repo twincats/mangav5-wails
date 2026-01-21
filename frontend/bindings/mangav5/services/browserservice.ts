@@ -22,6 +22,13 @@ export function Cleanup(): $CancellablePromise<void> {
 }
 
 /**
+ * ScrapFull mengambil seluruh HTML halaman setelah render selesai
+ */
+export function ScrapFull(url: string): $CancellablePromise<string> {
+    return $Call.ByID(1018709362, url);
+}
+
+/**
  * ScrapePage melakukan scraping sederhana pada halaman web
  * url: Alamat web yang akan discrape
  * selector: CSS selector untuk elemen yang ingin diambil teksnya (opsional)

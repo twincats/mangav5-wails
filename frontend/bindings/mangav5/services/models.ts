@@ -5,6 +5,198 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+export class APIRequest {
+    "url": string;
+    "method"?: string;
+    "headers"?: { [_: string]: string };
+
+    /** Creates a new APIRequest instance. */
+    constructor($$source: Partial<APIRequest> = {}) {
+        if (!("url" in $$source)) {
+            this["url"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new APIRequest instance from a string or object.
+     */
+    static createFrom($$source: any = {}): APIRequest {
+        const $$createField2_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("headers" in $$parsedSource) {
+            $$parsedSource["headers"] = $$createField2_0($$parsedSource["headers"]);
+        }
+        return new APIRequest($$parsedSource as Partial<APIRequest>);
+    }
+}
+
+export class APIStep {
+    "id": string;
+    "request": APIRequest;
+
+    /**
+     * json, html. default json
+     */
+    "response"?: string;
+
+    /** Creates a new APIStep instance. */
+    constructor($$source: Partial<APIStep> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("request" in $$source)) {
+            this["request"] = (new APIRequest());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new APIStep instance from a string or object.
+     */
+    static createFrom($$source: any = {}): APIStep {
+        const $$createField1_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("request" in $$parsedSource) {
+            $$parsedSource["request"] = $$createField1_0($$parsedSource["request"]);
+        }
+        return new APIStep($$parsedSource as Partial<APIStep>);
+    }
+}
+
+export class APIWorkflow {
+    "steps": APIStep[];
+
+    /** Creates a new APIWorkflow instance. */
+    constructor($$source: Partial<APIWorkflow> = {}) {
+        if (!("steps" in $$source)) {
+            this["steps"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new APIWorkflow instance from a string or object.
+     */
+    static createFrom($$source: any = {}): APIWorkflow {
+        const $$createField0_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("steps" in $$parsedSource) {
+            $$parsedSource["steps"] = $$createField0_0($$parsedSource["steps"]);
+        }
+        return new APIWorkflow($$parsedSource as Partial<APIWorkflow>);
+    }
+}
+
+export class EntryRule {
+    "url": string;
+    "method"?: string;
+    "headers"?: { [_: string]: string };
+
+    /**
+     * Extract params from URL
+     */
+    "regex"?: string;
+
+    /** Creates a new EntryRule instance. */
+    constructor($$source: Partial<EntryRule> = {}) {
+        if (!("url" in $$source)) {
+            this["url"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new EntryRule instance from a string or object.
+     */
+    static createFrom($$source: any = {}): EntryRule {
+        const $$createField2_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("headers" in $$parsedSource) {
+            $$parsedSource["headers"] = $$createField2_0($$parsedSource["headers"]);
+        }
+        return new EntryRule($$parsedSource as Partial<EntryRule>);
+    }
+}
+
+export class FieldRule {
+    "name": string;
+
+    /**
+     * css, json, template
+     */
+    "type": string;
+
+    /**
+     * Common
+     */
+    "multiple": boolean;
+    "trim": boolean;
+    "regex"?: string;
+    "children"?: FieldRule[];
+    "from"?: string;
+
+    /**
+     * CSS
+     */
+    "selector"?: string;
+    "attr"?: string[];
+    "filter"?: string;
+
+    /**
+     * has, not
+     */
+    "filter_mode"?: string;
+
+    /**
+     * JSON
+     */
+    "path"?: string;
+
+    /**
+     * Template
+     */
+    "template"?: string;
+
+    /** Creates a new FieldRule instance. */
+    constructor($$source: Partial<FieldRule> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+        if (!("multiple" in $$source)) {
+            this["multiple"] = false;
+        }
+        if (!("trim" in $$source)) {
+            this["trim"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FieldRule instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FieldRule {
+        const $$createField5_0 = $$createType5;
+        const $$createField8_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("children" in $$parsedSource) {
+            $$parsedSource["children"] = $$createField5_0($$parsedSource["children"]);
+        }
+        if ("attr" in $$parsedSource) {
+            $$parsedSource["attr"] = $$createField8_0($$parsedSource["attr"]);
+        }
+        return new FieldRule($$parsedSource as Partial<FieldRule>);
+    }
+}
+
 /**
  * ScrapeResult menyimpan hasil scraping
  */
@@ -33,7 +225,7 @@ export class ScrapeResult {
      * Creates a new ScrapeResult instance from a string or object.
      */
     static createFrom($$source: any = {}): ScrapeResult {
-        const $$createField2_0 = $$createType0;
+        const $$createField2_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("images" in $$parsedSource) {
             $$parsedSource["images"] = $$createField2_0($$parsedSource["images"]);
@@ -42,5 +234,114 @@ export class ScrapeResult {
     }
 }
 
+/**
+ * SiteRule defines the scraping rules for a specific site
+ */
+export class SiteRule {
+    "site": string;
+    "domains": string[];
+
+    /**
+     * static, browser, api, auto
+     */
+    "strategy": string;
+    "entry"?: EntryRule | null;
+    "api"?: APIWorkflow | null;
+    "extract": FieldRule[];
+    "wait_config"?: WaitConfig | null;
+
+    /** Creates a new SiteRule instance. */
+    constructor($$source: Partial<SiteRule> = {}) {
+        if (!("site" in $$source)) {
+            this["site"] = "";
+        }
+        if (!("domains" in $$source)) {
+            this["domains"] = [];
+        }
+        if (!("strategy" in $$source)) {
+            this["strategy"] = "";
+        }
+        if (!("extract" in $$source)) {
+            this["extract"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SiteRule instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SiteRule {
+        const $$createField1_0 = $$createType6;
+        const $$createField3_0 = $$createType8;
+        const $$createField4_0 = $$createType10;
+        const $$createField5_0 = $$createType5;
+        const $$createField6_0 = $$createType12;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("domains" in $$parsedSource) {
+            $$parsedSource["domains"] = $$createField1_0($$parsedSource["domains"]);
+        }
+        if ("entry" in $$parsedSource) {
+            $$parsedSource["entry"] = $$createField3_0($$parsedSource["entry"]);
+        }
+        if ("api" in $$parsedSource) {
+            $$parsedSource["api"] = $$createField4_0($$parsedSource["api"]);
+        }
+        if ("extract" in $$parsedSource) {
+            $$parsedSource["extract"] = $$createField5_0($$parsedSource["extract"]);
+        }
+        if ("wait_config" in $$parsedSource) {
+            $$parsedSource["wait_config"] = $$createField6_0($$parsedSource["wait_config"]);
+        }
+        return new SiteRule($$parsedSource as Partial<SiteRule>);
+    }
+}
+
+export class WaitConfig {
+    "container_selectors"?: string[];
+    "content_selectors"?: string[];
+    "min_text_length"?: number;
+    "require_image_loaded"?: boolean;
+    "timeout_ms"?: number;
+    "poll_ms"?: number;
+    "skip_waits"?: boolean;
+    "skip_render_stable"?: boolean;
+    "skip_navigation_wait"?: boolean;
+
+    /** Creates a new WaitConfig instance. */
+    constructor($$source: Partial<WaitConfig> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new WaitConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): WaitConfig {
+        const $$createField0_0 = $$createType6;
+        const $$createField1_0 = $$createType6;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("container_selectors" in $$parsedSource) {
+            $$parsedSource["container_selectors"] = $$createField0_0($$parsedSource["container_selectors"]);
+        }
+        if ("content_selectors" in $$parsedSource) {
+            $$parsedSource["content_selectors"] = $$createField1_0($$parsedSource["content_selectors"]);
+        }
+        return new WaitConfig($$parsedSource as Partial<WaitConfig>);
+    }
+}
+
 // Private type creation functions
-const $$createType0 = $Create.Array($Create.Any);
+const $$createType0 = $Create.Map($Create.Any, $Create.Any);
+const $$createType1 = APIRequest.createFrom;
+const $$createType2 = APIStep.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = FieldRule.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = $Create.Array($Create.Any);
+const $$createType7 = EntryRule.createFrom;
+const $$createType8 = $Create.Nullable($$createType7);
+const $$createType9 = APIWorkflow.createFrom;
+const $$createType10 = $Create.Nullable($$createType9);
+const $$createType11 = WaitConfig.createFrom;
+const $$createType12 = $Create.Nullable($$createType11);

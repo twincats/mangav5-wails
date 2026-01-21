@@ -18,15 +18,9 @@ export default defineConfig({
     vue(),
     wails('./bindings'),
     unocss(),
-    monacoEditorPlugin({
-      languageWorkers: ['json', 'editorWorkerService'], // Load only JSON and core editor workers
-      customWorkers: [
-        {
-          label: 'json',
-          entry: 'monaco-editor/esm/vs/language/json/json.worker',
-        },
-      ],
-    }),
+    // monacoEditorPlugin({
+    //   languageWorkers: ['json', 'editorWorkerService'], // Load only JSON and core editor workers
+    // }),
     AutoImport({
       imports: [
         'vue',
@@ -48,10 +42,6 @@ export default defineConfig({
       {
         find: '@',
         replacement: fileURLToPath(new URL('./src', import.meta.url)),
-      },
-      {
-        find: /^monaco-editor$/,
-        replacement: 'monaco-editor/esm/vs/editor/editor.api.js',
       },
     ],
   },

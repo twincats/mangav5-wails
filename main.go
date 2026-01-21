@@ -37,6 +37,7 @@ func main() {
 	// 'Mac' options tailor the application when running an macOS.
 	browserService := services.NewBrowserService()
 	defer browserService.Cleanup()
+	scraperService := services.NewScraperService(browserService)
 
 	app := application.New(application.Options{
 		Name:        "mangav5-wails3",
@@ -44,6 +45,7 @@ func main() {
 		Services: []application.Service{
 			application.NewService(&GreetService{}),
 			application.NewService(browserService),
+			application.NewService(scraperService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
