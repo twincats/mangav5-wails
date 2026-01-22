@@ -6,6 +6,9 @@ import {
   BookFilled as BookIcon,
   PersonAddAltRound as PersonIcon,
   WineBarRound as WineIcon,
+  HomeFilled,
+  SettingsFilled,
+  DownloadFilled,
 } from '@vicons/material'
 import { NIcon } from 'naive-ui'
 import { h, ref } from 'vue'
@@ -88,6 +91,36 @@ const menuOptions: MenuOption[] = [
   },
 ]
 
+const router = useRouter()
+const headerKey = ref('home')
+const headerMenu = [
+  {
+    label: 'Home',
+    key: 'home',
+    icon: renderIcon(HomeFilled),
+  },
+  {
+    label: 'Download',
+    key: 'download',
+    icon: renderIcon(DownloadFilled),
+  },
+  {
+    label: 'Settings',
+    key: 'settings',
+    icon: renderIcon(SettingsFilled),
+  },
+]
+
+const handleHeaderMenu = (key: string) => {
+  if (key === 'home') {
+    router.push('/')
+  } else if (key === 'settings') {
+    router.push('/settings')
+  } else if (key === 'download') {
+    router.push('/download')
+  }
+}
+
 const activeKey = ref<string | null>(null)
 const collapsed = ref(true)
 </script>
@@ -104,7 +137,7 @@ const collapsed = ref(true)
                 <n-layout-sider
                   bordered
                   collapse-mode="width"
-                  :collapsed-width="64"
+                  :collapsed-width="0"
                   :width="240"
                   :collapsed="collapsed"
                   show-trigger
@@ -120,9 +153,16 @@ const collapsed = ref(true)
                   />
                 </n-layout-sider>
                 <n-layout>
-                  <n-layout-header bordered> Yiheyuan Road </n-layout-header>
+                  <n-layout-header bordered>
+                    <n-menu
+                      mode="horizontal"
+                      v-model:value="headerKey"
+                      :options="headerMenu"
+                      @update:value="handleHeaderMenu"
+                    />
+                  </n-layout-header>
                   <n-layout-content
-                    content-style="padding: 24px; height: calc(100vh - 50px);"
+                    content-style="padding: 24px; height: calc(100vh - 66px);"
                   >
                     <router-view></router-view>
                   </n-layout-content>

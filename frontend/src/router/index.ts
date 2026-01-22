@@ -23,6 +23,14 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/download',
+    name: 'download',
+    component: () => import('../views/DownloadView.vue'),
+    meta: {
+      title: 'Download',
+    },
+  },
+  {
     path: '/settings',
     name: 'settings',
     component: () => import('../views/SettingsView.vue'),
