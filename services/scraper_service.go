@@ -424,29 +424,30 @@ func (s *ScraperService) extractFieldGeneric(source interface{}, field FieldRule
 					// Recursively extract
 					// Note: extractFieldGeneric expects 'source' to be what the type needs.
 					// If type is json, source should be string or json-compatible.
-					
+
 					// If source is Selection and child is CSS, pass Selection
 					// If source is Selection and child is Template, pass Selection
 					// If source is Selection and child is JSON, extract text? (Handled in extractFields but here we call extractFieldGeneric directly)
-					
+
 					if isSel {
 						// Special handling for Selection source
-						if child.Type == "css" || child.Type == "template" {
+						switch child.Type {
+						case "css", "template":
 							val = s.extractFieldGeneric(sel, child)
-						} else if child.Type == "json" {
+						case "json":
 							// For JSON child of a template in CSS context (unlikely but possible?)
 							// Treat text as JSON?
 							// Let's defer to extractFieldGeneric which handles json type if source is string
 							// But source is Selection here.
 							// extractFieldGeneric needs to handle Selection for json type?
 							// Currently extractFieldGeneric handles json type by expecting string or object.
-							
+
 							// Let's make extractFieldGeneric smart enough to handle Selection for JSON type too?
 							// OR extract the text here.
 							// Reuse extractFields logic?
 							// Let's assume child of template in CSS context is usually CSS.
 							val = s.extractFieldGeneric(sel, child)
-						} else {
+						default:
 							val = s.extractFieldGeneric(sel, child)
 						}
 					} else {
@@ -542,18 +543,18 @@ func (s *ScraperService) extractFieldGeneric(source interface{}, field FieldRule
 	return nil
 }
 
-
 func (s *ScraperService) extractFields(selection *goquery.Selection, rules []FieldRule) map[string]interface{} {
 	result := make(map[string]interface{})
 	for _, rule := range rules {
-		if rule.Type == "json" {
+		switch rule.Type {
+		case "json":
 			// Special case: Extract text from CSS selection and treat as JSON
 			// 1. Get the element(s) using selector
 			sel := selection
 			if rule.Selector != "" {
 				sel = selection.Find(rule.Selector)
 			}
-			
+
 			// 2. Get text
 			jsonStr := sel.Text()
 			if rule.Trim {
@@ -562,27 +563,27 @@ func (s *ScraperService) extractFields(selection *goquery.Selection, rules []Fie
 
 			// 3. Extract using JSON logic
 			result[rule.Name] = s.extractJSON(jsonStr, rule)
-		} else if rule.Type == "template" {
+		case "template":
 			// Template field at the top level of extractFields (CSS/Static context)
 			// It needs to gather data from its children (which might be CSS rules)
 			// And then process the template.
-			
+
 			// We can reuse extractFieldGeneric but we need to pass the selection as source?
 			// extractFieldGeneric expects source to be map[string]interface{} for template children lookups if using "From"
 			// BUT here in static extraction, children are usually relative CSS selectors.
-			
+
 			// So we need a special handling for template in CSS context OR adapt extractFieldGeneric.
 			// Let's adapt extractFieldGeneric to handle Selection source for children.
-			
+
 			// Actually, extractFieldGeneric handles template by extracting children first.
 			// If source is Selection, we need to handle that in the children loop.
-			
+
 			// BUT extractFieldGeneric implementation for template expects source to be map if using From?
 			// No, let's look at extractFieldGeneric again.
-			
+
 			result[rule.Name] = s.extractFieldGeneric(selection, rule)
 
-		} else {
+		default:
 			// Default to CSS extraction
 			result[rule.Name] = s.extractCSS(selection, rule)
 		}
@@ -621,7 +622,7 @@ func (s *ScraperService) extractCSS(sel *goquery.Selection, rule FieldRule) inte
 
 func (s *ScraperService) extractValue(sel *goquery.Selection, rule FieldRule) interface{} {
 	var val string
-	
+
 	// Attribute or Text
 	if len(rule.Attr) > 0 {
 		// Prefer first found attribute
@@ -660,7 +661,7 @@ func (s *ScraperService) extractJSON(jsonStr string, rule FieldRule) interface{}
 	if rule.Path == "" {
 		return nil
 	}
-	
+
 	// Normalize Path: GJSON requires double quotes for string literals in queries.
 	// Users might use single quotes in the JSON rule to avoid escaping hell.
 	// We replace ' with " inside the path, but we need to be careful not to break other things.
@@ -669,7 +670,7 @@ func (s *ScraperService) extractJSON(jsonStr string, rule FieldRule) interface{}
 	path := strings.ReplaceAll(rule.Path, "'", "\"")
 
 	res := gjson.Get(jsonStr, path)
-	
+
 	if rule.Multiple {
 		if !res.IsArray() {
 			return []interface{}{}
@@ -688,7 +689,7 @@ func (s *ScraperService) extractJSON(jsonStr string, rule FieldRule) interface{}
 					// BUT extractJSON signature takes jsonStr (the current item).
 					// If we want to support 'From' inside a nested JSON loop, we'd need the global context, which we don't have here.
 					// assumption: Children of a JSON extraction operate on the extracted item.
-					
+
 					childMap[child.Name] = s.extractJSON(value.String(), child)
 				}
 				items = append(items, childMap)
@@ -699,7 +700,7 @@ func (s *ScraperService) extractJSON(jsonStr string, rule FieldRule) interface{}
 		})
 		return items
 	}
-	
+
 	// Single
 	if len(rule.Children) > 0 {
 		childMap := make(map[string]interface{})
@@ -709,7 +710,7 @@ func (s *ScraperService) extractJSON(jsonStr string, rule FieldRule) interface{}
 		}
 		return childMap
 	}
-	
+
 	val := res.String()
 	// Regex on string value
 	if rule.Regex != "" {
@@ -721,7 +722,7 @@ func (s *ScraperService) extractJSON(jsonStr string, rule FieldRule) interface{}
 			}
 		}
 	}
-	
+
 	return val
 }
 
