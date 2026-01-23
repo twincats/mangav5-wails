@@ -15,17 +15,12 @@ type DatabaseService struct {
 	scrapingRuleRepo *repo.ScrapingRuleRepo
 }
 
-func NewDatabaseService(
-	mangaRepo *repo.MangaRepo,
-	configRepo *repo.ConfigRepo,
-	chapterRepo *repo.ChapterRepo,
-	scrapingRuleRepo *repo.ScrapingRuleRepo,
-) *DatabaseService {
+func NewDatabaseService(repos *repo.Repositories) *DatabaseService {
 	return &DatabaseService{
-		mangaRepo:        mangaRepo,
-		configRepo:       configRepo,
-		chapterRepo:      chapterRepo,
-		scrapingRuleRepo: scrapingRuleRepo,
+		mangaRepo:        repos.Manga,
+		configRepo:       repos.Config,
+		chapterRepo:      repos.Chapter,
+		scrapingRuleRepo: repos.ScrapingRule,
 	}
 }
 

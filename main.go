@@ -58,22 +58,18 @@ func main() {
 	}
 
 	// Initialize Repositories
-	mangaRepo := repo.NewMangaRepo(database)
-	configRepo := repo.NewConfigRepo(database)
-	chapterRepo := repo.NewChapterRepo(database)
-	scrapingRuleRepo := repo.NewScrapingRuleRepo(database)
+	repos := repo.NewRepositories(database)
 
 	// Initialize Services
-	databaseService := services.NewDatabaseService(mangaRepo, configRepo, chapterRepo, scrapingRuleRepo)
+	databaseService := services.NewDatabaseService(repos)
 	browserService := services.NewBrowserService()
 	defer browserService.Cleanup()
 	scraperService := services.NewScraperService(browserService)
 
 	app := application.New(application.Options{
 		Name:        "mangav5-wails3",
-		Description: "A demo of using raw HTML & CSS",
+		Description: "Manga Reader, Downloader and overall manga manager",
 		Services: []application.Service{
-			application.NewService(&GreetService{}),
 			application.NewService(browserService),
 			application.NewService(scraperService),
 			application.NewService(services.NewDownloadService()),

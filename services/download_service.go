@@ -1,7 +1,7 @@
 package services
 
 import (
-	"mangav5/downloader"
+	"mangav5/internal/downloader"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
