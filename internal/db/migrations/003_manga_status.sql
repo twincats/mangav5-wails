@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS manga_status (
+  status_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+  status_name  TEXT NOT NULL UNIQUE
+);

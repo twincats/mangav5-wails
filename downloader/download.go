@@ -15,6 +15,7 @@ func downloadImage(
 	client *resty.Client,
 	url string,
 	dir string,
+	baseName string,
 	retry int,
 ) error {
 	// Ensure directory exists
@@ -37,7 +38,12 @@ func downloadImage(
 		}
 
 		ext := detectExt(resp)
-		name := fmt.Sprintf("%x%s", sha1.Sum([]byte(url)), ext)
+		var name string
+		if baseName != "" {
+			name = baseName + ext
+		} else {
+			name = fmt.Sprintf("%x%s", sha1.Sum([]byte(url)), ext)
+		}
 		path := filepath.Join(dir, name)
 
 		if err := os.WriteFile(path, resp.Body(), 0644); err != nil {

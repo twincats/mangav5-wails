@@ -4,6 +4,9 @@ import (
 	"embed"
 	_ "embed"
 	"log"
+	"mangav5/internal/db"
+	"mangav5/internal/repo"
+	"mangav5/internal/util"
 	"mangav5/services"
 	"time"
 
@@ -35,6 +38,33 @@ func main() {
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
+
+	// Determine database path and migrate if necessary
+	dbPath, err := util.GetAndMigrateDatabasePath()
+	if err != nil {
+		log.Fatal("Failed to setup database path:", err)
+	}
+
+	// Initialize Database
+	database, err := db.Open(dbPath)
+	if err != nil {
+		log.Fatal("Failed to open database:", err)
+	}
+	defer database.Close()
+
+	// Run Migrations
+	if err := db.Migrate(database); err != nil {
+		log.Fatal("Failed to migrate database:", err)
+	}
+
+	// Initialize Repositories
+	mangaRepo := repo.NewMangaRepo(database)
+	configRepo := repo.NewConfigRepo(database)
+	chapterRepo := repo.NewChapterRepo(database)
+	scrapingRuleRepo := repo.NewScrapingRuleRepo(database)
+
+	// Initialize Services
+	databaseService := services.NewDatabaseService(mangaRepo, configRepo, chapterRepo, scrapingRuleRepo)
 	browserService := services.NewBrowserService()
 	defer browserService.Cleanup()
 	scraperService := services.NewScraperService(browserService)
@@ -46,6 +76,8 @@ func main() {
 			application.NewService(&GreetService{}),
 			application.NewService(browserService),
 			application.NewService(scraperService),
+			application.NewService(services.NewDownloadService()),
+			application.NewService(databaseService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -88,7 +120,7 @@ func main() {
 	}()
 
 	// Run the application. This blocks until the application has been exited.
-	err := app.Run()
+	err = app.Run()
 
 	// Ensure cleanup is called even if OnShutdown was missed
 	browserService.Cleanup()

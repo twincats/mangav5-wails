@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"sync"
 	"time"
@@ -31,6 +32,9 @@ func DownloadImagesAdaptive(
 	// semaphore controls concurrency
 	sem := make(chan struct{}, cfg.MaxConcurrency)
 
+	// Calculate padding width for filenames
+	padWidth := len(fmt.Sprintf("%d", total))
+
 	var wg sync.WaitGroup
 
 	worker := func() {
@@ -41,8 +45,12 @@ func DownloadImagesAdaptive(
 			sem <- struct{}{}
 
 			url := urls[idx]
+
+			// Generate filename based on index (1-based) with padding
+			baseName := fmt.Sprintf("%0*d", padWidth, idx+1)
+
 			start := time.Now()
-			err := downloadImage(ctx, client, url, cfg.OutputDir, cfg.RetryCount)
+			err := downloadImage(ctx, client, url, cfg.OutputDir, baseName, cfg.RetryCount)
 			latency := time.Since(start)
 
 			// adaptive logic

@@ -91,6 +91,42 @@ export class APIWorkflow {
     }
 }
 
+/**
+ * DownloadOptions allows configuring the download behavior
+ */
+export class DownloadOptions {
+    "minConcurrency": number;
+    "maxConcurrency": number;
+    "retryCount": number;
+    "timeoutSeconds": number;
+
+    /** Creates a new DownloadOptions instance. */
+    constructor($$source: Partial<DownloadOptions> = {}) {
+        if (!("minConcurrency" in $$source)) {
+            this["minConcurrency"] = 0;
+        }
+        if (!("maxConcurrency" in $$source)) {
+            this["maxConcurrency"] = 0;
+        }
+        if (!("retryCount" in $$source)) {
+            this["retryCount"] = 0;
+        }
+        if (!("timeoutSeconds" in $$source)) {
+            this["timeoutSeconds"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DownloadOptions instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DownloadOptions {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new DownloadOptions($$parsedSource as Partial<DownloadOptions>);
+    }
+}
+
 export class EntryRule {
     "url": string;
     "method"?: string;

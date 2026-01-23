@@ -3,10 +3,14 @@
     <div class="mx-auto">
       <div class="flex gap-2">
         <n-input-group>
-          <n-input />
-          <n-button tertiary type="primary"> GO </n-button>
+          <n-input v-model:value="url" />
+          <n-button tertiary type="primary" @click="clickScrapeTest">
+            GO
+          </n-button>
         </n-input-group>
-        <n-button tertiary type="primary"> Download </n-button>
+        <n-button tertiary type="primary" @click="clickDownloadTest">
+          Download
+        </n-button>
         <n-button type="primary"> Save Rules </n-button>
         <n-button type="primary"> Load Rules </n-button>
       </div>
@@ -66,7 +70,7 @@
           <div :style="{ height: '100%' }">
             <MonacoEditor
               v-model="resultJson"
-              language="text"
+              language="json"
               theme="vs-dark"
               :formatOnLoad="true"
             />
@@ -80,7 +84,57 @@
 <script setup lang="ts">
 import { PlaylistAddFilled, PostAddFilled } from '@vicons/material'
 import SiteRuleSchema from '@/assets/SiteRuleSchema.json'
+import {
+  DownloadService,
+  ScraperService,
+} from '../../bindings/mangav5/services'
+import { Events } from '@wailsio/runtime'
 
 const code = ref('')
 const resultJson = ref('')
+const dialog = useDialog()
+
+const clickDownloadTest = async () => {
+  console.log('clickDownloadTest')
+  if (!resultJson.value) {
+    console.log('resultJson.value is empty')
+    return
+  }
+  const urlImages: string[] = JSON.parse(resultJson.value).pages
+  try {
+    const res = await DownloadService.DownloadImages(
+      urlImages,
+      'D:/Tutorial/mangago/ikimen',
+      null,
+    )
+    console.log(res)
+  } catch (error) {
+    console.log(error)
+  }
+}
+Events.On('downloadProgress', data => {
+  console.log('downloadProgress', data)
+})
+
+const url = ref('')
+// scrape test
+const clickScrapeTest = async () => {
+  console.log('clickScrapeTest')
+  if (!code.value) {
+    console.log('code.value is empty')
+    return
+  }
+  const rules = JSON.parse(code.value)
+  try {
+    const res = await ScraperService.Scrape(rules, url.value)
+    resultJson.value = JSON.stringify(res, null, 2)
+    console.log(res)
+  } catch (error) {
+    console.log(error)
+    dialog.error({
+      title: 'Error',
+      content: `${error}`,
+    })
+  }
+}
 </script>
