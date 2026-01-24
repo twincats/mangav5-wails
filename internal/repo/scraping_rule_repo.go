@@ -18,9 +18,9 @@ func NewScrapingRuleRepo(db *sql.DB) *ScrapingRuleRepo {
 
 func (r *ScrapingRuleRepo) Insert(ctx context.Context, rule *models.ScrapingRule) (int64, error) {
 	res, err := r.DB.ExecContext(ctx, `
-		INSERT INTO scraping_rules (site_key, name, domains_json, website_url, manga_rule_json, chapter_rule_json, enabled, priority)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, rule.SiteKey, rule.Name, rule.DomainsJSON, rule.WebsiteURL, rule.MangaRuleJSON, rule.ChapterRuleJSON, rule.Enabled, rule.Priority)
+		INSERT INTO scraping_rules (site_key, name, domains_json, manga_rule_json, chapter_rule_json, enabled)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, rule.SiteKey, rule.Name, rule.DomainsJSON, rule.MangaRuleJSON, rule.ChapterRuleJSON, rule.Enabled)
 
 	if err != nil {
 		return 0, err
@@ -28,11 +28,27 @@ func (r *ScrapingRuleRepo) Insert(ctx context.Context, rule *models.ScrapingRule
 	return res.LastInsertId()
 }
 
+func (r *ScrapingRuleRepo) Upsert(ctx context.Context, rule *models.ScrapingRule) error {
+	_, err := r.DB.ExecContext(ctx, `
+		INSERT INTO scraping_rules (site_key, name, domains_json, manga_rule_json, chapter_rule_json, enabled)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(site_key) DO UPDATE SET
+			name = excluded.name,
+			domains_json = excluded.domains_json,
+			manga_rule_json = excluded.manga_rule_json,
+			chapter_rule_json = excluded.chapter_rule_json,
+			enabled = excluded.enabled,
+			updated_at = datetime('now')
+	`, rule.SiteKey, rule.Name, rule.DomainsJSON, rule.MangaRuleJSON, rule.ChapterRuleJSON, rule.Enabled)
+
+	return err
+}
+
 func (r *ScrapingRuleRepo) List(ctx context.Context) ([]models.ScrapingRule, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-		SELECT id, site_key, name, domains_json, website_url, manga_rule_json, chapter_rule_json, enabled, priority, created_at, updated_at
+		SELECT id, site_key, name, domains_json, manga_rule_json, chapter_rule_json, enabled, created_at, updated_at
 		FROM scraping_rules
-		ORDER BY priority DESC
+		ORDER BY created_at DESC
 	`)
 	if err != nil {
 		return nil, err
@@ -43,8 +59,8 @@ func (r *ScrapingRuleRepo) List(ctx context.Context) ([]models.ScrapingRule, err
 	for rows.Next() {
 		var s models.ScrapingRule
 		if err := rows.Scan(
-			&s.ID, &s.SiteKey, &s.Name, &s.DomainsJSON, &s.WebsiteURL,
-			&s.MangaRuleJSON, &s.ChapterRuleJSON, &s.Enabled, &s.Priority,
+			&s.ID, &s.SiteKey, &s.Name, &s.DomainsJSON,
+			&s.MangaRuleJSON, &s.ChapterRuleJSON, &s.Enabled,
 			&s.CreatedAt, &s.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -56,15 +72,15 @@ func (r *ScrapingRuleRepo) List(ctx context.Context) ([]models.ScrapingRule, err
 
 func (r *ScrapingRuleRepo) GetBySiteKey(ctx context.Context, siteKey string) (*models.ScrapingRule, error) {
 	row := r.DB.QueryRowContext(ctx, `
-		SELECT id, site_key, name, domains_json, website_url, manga_rule_json, chapter_rule_json, enabled, priority, created_at, updated_at
+		SELECT id, site_key, name, domains_json, manga_rule_json, chapter_rule_json, enabled, created_at, updated_at
 		FROM scraping_rules
 		WHERE site_key = ?
 	`, siteKey)
 
 	var s models.ScrapingRule
 	err := row.Scan(
-		&s.ID, &s.SiteKey, &s.Name, &s.DomainsJSON, &s.WebsiteURL,
-		&s.MangaRuleJSON, &s.ChapterRuleJSON, &s.Enabled, &s.Priority,
+		&s.ID, &s.SiteKey, &s.Name, &s.DomainsJSON,
+		&s.MangaRuleJSON, &s.ChapterRuleJSON, &s.Enabled,
 		&s.CreatedAt, &s.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -79,9 +95,9 @@ func (r *ScrapingRuleRepo) GetBySiteKey(ctx context.Context, siteKey string) (*m
 func (r *ScrapingRuleRepo) Update(ctx context.Context, rule *models.ScrapingRule) error {
 	_, err := r.DB.ExecContext(ctx, `
 		UPDATE scraping_rules
-		SET name=?, domains_json=?, website_url=?, manga_rule_json=?, chapter_rule_json=?, enabled=?, priority=?, updated_at=datetime('now')
+		SET name=?, domains_json=?, manga_rule_json=?, chapter_rule_json=?, enabled=?, updated_at=datetime('now')
 		WHERE site_key=?
-	`, rule.Name, rule.DomainsJSON, rule.WebsiteURL, rule.MangaRuleJSON, rule.ChapterRuleJSON, rule.Enabled, rule.Priority, rule.SiteKey)
+	`, rule.Name, rule.DomainsJSON, rule.MangaRuleJSON, rule.ChapterRuleJSON, rule.Enabled, rule.SiteKey)
 	return err
 }
 

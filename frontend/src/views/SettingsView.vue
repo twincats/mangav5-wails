@@ -3,15 +3,28 @@
     <div class="mx-auto">
       <div class="flex gap-2">
         <n-input-group>
-          <n-input v-model:value="url" />
+          <n-input v-model:value="url" placeholder="Manga Rule URL" />
           <n-button tertiary type="primary" @click="clickScrapeTest">
             GO
           </n-button>
         </n-input-group>
-        <n-button tertiary type="primary" @click="clickDownloadTest">
+        <n-input-group>
+          <n-input v-model:value="url" placeholder="Chapter Rule URL" />
+          <n-button tertiary type="primary" @click="clickScrapeTest">
+            GO
+          </n-button>
+        </n-input-group>
+        <n-button
+          tertiary
+          type="primary"
+          @click="clickDownloadTest"
+          :disabled="!statusDownload"
+        >
           Download
         </n-button>
-        <n-button type="primary"> Save Rules </n-button>
+        <n-button type="primary" @click="saveScrapingRules">
+          Save Rules
+        </n-button>
         <n-button type="primary"> Load Rules </n-button>
       </div>
     </div>
@@ -48,35 +61,52 @@
       </div>
     </div>
     <!-- editor row -->
-    <div>
-      <n-split
-        direction="horizontal"
-        class="h-[calc(100vh-210px)] mt-4"
-        :max="0.75"
-        :min="0.5"
-      >
-        <template #1>
-          <div :style="{ height: '100%' }">
-            <MonacoEditor
-              v-model="code"
-              language="json"
-              theme="vs-dark"
-              :jsonSchema="SiteRuleSchema"
-              :formatOnLoad="true"
-            />
-          </div>
-        </template>
-        <template #2>
-          <div :style="{ height: '100%' }">
-            <MonacoEditor
-              v-model="resultJson"
-              language="json"
-              theme="vs-dark"
-              :formatOnLoad="true"
-            />
-          </div>
-        </template>
-      </n-split>
+    {{ activeTab }}
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <n-tabs
+          type="line"
+          paneClass="h-[calc(100vh-280px)]"
+          v-model:value="activeTab"
+        >
+          <n-tab-pane name="editor1" tab="Manga Rule">
+            <div class="h-full">
+              <MonacoEditor
+                v-model="codeMangaRule"
+                language="json"
+                theme="vs-dark"
+                :jsonSchema="SiteRuleSchema"
+                :formatOnLoad="true"
+              />
+            </div>
+          </n-tab-pane>
+          <n-tab-pane name="editor2" tab="Chapter Rule">
+            <div class="h-full">
+              <MonacoEditor
+                v-model="codeChapterRule"
+                language="json"
+                theme="vs-dark"
+                :jsonSchema="SiteRuleSchema"
+                :formatOnLoad="true"
+              />
+            </div>
+          </n-tab-pane>
+        </n-tabs>
+      </div>
+      <div>
+        <n-tabs type="line" paneClass="h-[calc(100vh-280px)]">
+          <n-tab-pane name="editor3" tab="Scrape Result">
+            <div class="h-full">
+              <MonacoEditor
+                v-model="resultJson"
+                language="json"
+                theme="vs-dark"
+                :formatOnLoad="true"
+              />
+            </div>
+          </n-tab-pane>
+        </n-tabs>
+      </div>
     </div>
   </div>
 </template>
@@ -89,10 +119,16 @@ import {
   ScraperService,
 } from '../../bindings/mangav5/services'
 import { Events } from '@wailsio/runtime'
+import { watchDebounced } from '@vueuse/core'
+import { DatabaseService } from '../../bindings/mangav5/services'
+import { ScrapingRule } from '../../bindings/mangav5/internal/models'
 
-const code = ref('')
+const codeMangaRule = ref('')
+const codeChapterRule = ref('')
 const resultJson = ref('')
 const dialog = useDialog()
+
+const activeTab = ref('editor1')
 
 const clickDownloadTest = async () => {
   console.log('clickDownloadTest')
@@ -120,11 +156,11 @@ const url = ref('')
 // scrape test
 const clickScrapeTest = async () => {
   console.log('clickScrapeTest')
-  if (!code.value) {
+  if (!codeMangaRule.value) {
     console.log('code.value is empty')
     return
   }
-  const rules = JSON.parse(code.value)
+  const rules = JSON.parse(codeMangaRule.value)
   try {
     const res = await ScraperService.Scrape(rules, url.value)
     resultJson.value = JSON.stringify(res, null, 2)
@@ -136,5 +172,95 @@ const clickScrapeTest = async () => {
       content: `${error}`,
     })
   }
+}
+
+const scrapingRuleInput = reactive({
+  site_key: '',
+  name: '',
+  domains: '',
+  enabled: true,
+})
+/* ====== SAVE RULES ====== */
+const saveScrapingRules = async () => {
+  try {
+    const ruleData = new ScrapingRule()
+    ruleData.site_key = scrapingRuleInput.site_key
+    ruleData.name = scrapingRuleInput.name
+    ruleData.domains_json = JSON.stringify(scrapingRuleInput.domains)
+    ruleData.enabled = scrapingRuleInput.enabled ? 1 : 0
+    ruleData.chapter_rule_json =
+      typeof codeChapterRule.value === 'string'
+        ? codeChapterRule.value
+        : JSON.stringify(codeChapterRule.value)
+    ruleData.manga_rule_json =
+      typeof codeMangaRule.value === 'string'
+        ? codeMangaRule.value
+        : JSON.stringify(codeMangaRule.value)
+    await DatabaseService.SaveScrapingRule(ruleData)
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+const statusDownload = ref(false)
+/* ====== WATCHERR ====== */
+// watch resultJson and update statusDownload
+watchDebounced(
+  resultJson,
+  v => {
+    // exit if empty
+    if (!v.trim()) {
+      statusDownload.value = false
+      return
+    }
+    // parse JSON
+    try {
+      const p = JSON.parse(v)
+      if (isValidPages(p)) {
+        statusDownload.value = true
+      } else {
+        statusDownload.value = false
+      }
+    } catch (error) {
+      statusDownload.value = false
+    }
+  },
+  { debounce: 500, maxWait: 1000 },
+)
+
+// watch codeMangaRule
+watchDebounced(codeMangaRule, v => {
+  // exit if empty
+  if (!v.trim()) {
+    return
+  }
+})
+
+/* ====== HELPER FUNCTIONS ====== */
+interface PageData {
+  pages: string[]
+}
+
+function isValidUrl(str: string): boolean {
+  try {
+    new URL(str)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function isValidPages(data: unknown): data is PageData {
+  if (typeof data !== 'object' || data === null) return false
+
+  const obj = data as Record<string, any>
+  if (!('pages' in obj)) return false
+
+  const pages = obj.pages
+  if (!Array.isArray(pages)) return false
+
+  return pages.every(
+    (url: string) => typeof url === 'string' && isValidUrl(url),
+  )
 }
 </script>

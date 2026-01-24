@@ -235,11 +235,9 @@ export class ScrapingRule {
     "site_key": string;
     "name": string;
     "domains_json": string;
-    "website_url": string;
     "manga_rule_json": string;
     "chapter_rule_json": string;
     "enabled": number;
-    "priority": number;
     "created_at": string;
     "updated_at": string;
 
@@ -257,9 +255,6 @@ export class ScrapingRule {
         if (!("domains_json" in $$source)) {
             this["domains_json"] = "";
         }
-        if (!("website_url" in $$source)) {
-            this["website_url"] = "";
-        }
         if (!("manga_rule_json" in $$source)) {
             this["manga_rule_json"] = "";
         }
@@ -268,9 +263,6 @@ export class ScrapingRule {
         }
         if (!("enabled" in $$source)) {
             this["enabled"] = 0;
-        }
-        if (!("priority" in $$source)) {
-            this["priority"] = 0;
         }
         if (!("created_at" in $$source)) {
             this["created_at"] = "";
