@@ -7,17 +7,10 @@ import * as monaco from 'monaco-editor'
 import 'monaco-editor/esm/vs/language/json/monaco.contribution'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
-import {
-  computed,
-  onMounted,
-  onBeforeUnmount,
-  ref,
-  watch,
-  shallowRef,
-  toRaw,
-} from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch, toRaw } from 'vue'
 import { scrapingRuleSnippets } from '../config/monacoSnippets'
 import { registerSchema, unregisterSchema } from '../utils/monacoSchemaRegistry'
+import { useDebounceFn } from '@vueuse/core'
 
 type JsonSchema = Record<string, unknown>
 
@@ -43,7 +36,11 @@ const props = withDefaults(defineProps<Props>(), {
   readOnly: false,
 })
 
-const emit = defineEmits(['update:modelValue', 'change'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string): void
+  (e: 'change', value: string): void
+  (e: 'validate', isValid: boolean): void
+}>()
 
 const containerStyle = computed(() => {
   return {
@@ -209,10 +206,47 @@ onMounted(() => {
     registerJsonSnippets()
   }
 
+  // Common validation logic
+  // Debounce validation to avoid excessive parsing on large files
+  const performValidation = useDebounceFn(() => {
+    if (!model) return
+
+    // 1. Check for empty/whitespace content
+    const value = editor?.getValue() || ''
+    if (!value.trim()) {
+      emit('validate', false)
+      return
+    }
+
+    // 2. Immediate syntax check for JSON to prevent race condition
+    if (props.language === 'json') {
+      try {
+        JSON.parse(value)
+      } catch (e) {
+        emit('validate', false)
+        return
+      }
+    }
+
+    // 3. Check for Monaco markers (schema errors or other language errors)
+    const markers = monaco.editor.getModelMarkers({ resource: model.uri })
+    const hasErrors = markers.some(
+      marker => marker.severity === monaco.MarkerSeverity.Error,
+    )
+
+    emit('validate', !hasErrors)
+  }, 300) // 300ms debounce delay
+
   modelChangeDisposable = editor.onDidChangeModelContent(() => {
     const value = editor!.getValue()
     emit('update:modelValue', value)
     emit('change', value)
+    performValidation() // Validate immediately on content change (catches empty string)
+  })
+
+  // Listen for marker changes (validation errors)
+  monaco.editor.onDidChangeMarkers(() => {
+    performValidation() // Re-validate when markers update
   })
 })
 

@@ -3,14 +3,38 @@
     <div class="mx-auto">
       <div class="flex gap-2">
         <n-input-group>
-          <n-input v-model:value="url" placeholder="Manga Rule URL" />
-          <n-button tertiary type="primary" @click="clickScrapeTest">
+          <n-input
+            v-model:value="urlRule.url_manga_rule"
+            placeholder="Manga Rule URL"
+          />
+          <n-button
+            tertiary
+            type="primary"
+            @click="
+              clickScrapeTest(
+                urlRule.url_manga_rule,
+                scrapingRuleInput.manga_rule_json,
+              )
+            "
+          >
             GO
           </n-button>
         </n-input-group>
         <n-input-group>
-          <n-input v-model:value="url" placeholder="Chapter Rule URL" />
-          <n-button tertiary type="primary" @click="clickScrapeTest">
+          <n-input
+            v-model:value="urlRule.url_chapter_rule"
+            placeholder="Chapter Rule URL"
+          />
+          <n-button
+            tertiary
+            type="primary"
+            @click="
+              clickScrapeTest(
+                urlRule.url_chapter_rule,
+                scrapingRuleInput.chapter_rule_json,
+              )
+            "
+          >
             GO
           </n-button>
         </n-input-group>
@@ -30,21 +54,51 @@
     </div>
     <!-- second row -->
     <div class="grid grid-cols-10 mt-2">
-      <div class="col-span-9 grid grid-cols-6 gap-2">
-        <n-input type="text" placeholder="site_key" />
-        <n-input type="text" placeholder="name" />
-        <n-input type="text" placeholder="domains" />
-        <div class="col-span-3 gap-2 grid grid-cols-4 items-center">
-          <n-switch>
+      <div class="col-span-9 flex gap-2">
+        <n-input
+          type="text"
+          placeholder="site_key"
+          v-model:value="scrapingRuleInput.site_key"
+        />
+        <n-input
+          type="text"
+          placeholder="name"
+          v-model:value="scrapingRuleInput.name"
+        />
+        <n-input
+          type="text"
+          placeholder="domains"
+          v-model:value="scrapingRuleInput.domains_json"
+        />
+        <div class="flex gap-2 items-center">
+          <n-switch
+            v-model:value="scrapingRuleInput.enabled"
+            :checked-value="1"
+            :unchecked-value="0"
+          >
             <template #checked> enabled </template>
             <template #unchecked> disabled </template>
           </n-switch>
-          <n-checkbox> manga_rule </n-checkbox>
-          <n-checkbox> chapter_rule </n-checkbox>
-          <n-switch>
-            <template #checked> chapter_rule </template>
-            <template #unchecked> manga_rule </template>
-          </n-switch>
+          <div class="flex gap-2">
+            <n-button type="primary" text :disabled="!statusJson.manga_rule">
+              <template #icon>
+                <n-icon>
+                  <CheckCircleFilled v-if="statusJson.manga_rule" />
+                  <CancelRound v-else />
+                </n-icon>
+              </template>
+              Manga Rule
+            </n-button>
+            <n-button type="primary" text :disabled="!statusJson.chapter_rule">
+              <template #icon>
+                <n-icon>
+                  <CheckCircleFilled v-if="statusJson.chapter_rule" />
+                  <CancelRound v-else />
+                </n-icon>
+              </template>
+              Chapter Rule
+            </n-button>
+          </div>
         </div>
       </div>
       <div class="flex justify-end gap-2">
@@ -60,8 +114,8 @@
         </n-button>
       </div>
     </div>
+    <!-- third row -->
     <!-- editor row -->
-    {{ activeTab }}
     <div class="grid grid-cols-2 gap-2">
       <div>
         <n-tabs
@@ -72,22 +126,24 @@
           <n-tab-pane name="editor1" tab="Manga Rule">
             <div class="h-full">
               <MonacoEditor
-                v-model="codeMangaRule"
+                v-model="scrapingRuleInput.manga_rule_json"
                 language="json"
                 theme="vs-dark"
                 :jsonSchema="SiteRuleSchema"
                 :formatOnLoad="true"
+                @validate="statusJson.manga_rule = $event"
               />
             </div>
           </n-tab-pane>
           <n-tab-pane name="editor2" tab="Chapter Rule">
             <div class="h-full">
               <MonacoEditor
-                v-model="codeChapterRule"
+                v-model="scrapingRuleInput.chapter_rule_json"
                 language="json"
                 theme="vs-dark"
                 :jsonSchema="SiteRuleSchema"
                 :formatOnLoad="true"
+                @validate="statusJson.chapter_rule = $event"
               />
             </div>
           </n-tab-pane>
@@ -112,7 +168,12 @@
 </template>
 
 <script setup lang="ts">
-import { PlaylistAddFilled, PostAddFilled } from '@vicons/material'
+import {
+  PlaylistAddFilled,
+  PostAddFilled,
+  CheckCircleFilled,
+  CancelRound,
+} from '@vicons/material'
 import SiteRuleSchema from '@/assets/SiteRuleSchema.json'
 import {
   DownloadService,
@@ -123,12 +184,17 @@ import { watchDebounced } from '@vueuse/core'
 import { DatabaseService } from '../../bindings/mangav5/services'
 import { ScrapingRule } from '../../bindings/mangav5/internal/models'
 
-const codeMangaRule = ref('')
-const codeChapterRule = ref('')
 const resultJson = ref('')
 const dialog = useDialog()
-
 const activeTab = ref('editor1')
+const statusJson = reactive({
+  manga_rule: false,
+  chapter_rule: false,
+})
+const urlRule = reactive({
+  url_manga_rule: '',
+  url_chapter_rule: '',
+})
 
 const clickDownloadTest = async () => {
   console.log('clickDownloadTest')
@@ -152,17 +218,15 @@ Events.On('downloadProgress', data => {
   console.log('downloadProgress', data)
 })
 
-const url = ref('')
 // scrape test
-const clickScrapeTest = async () => {
-  console.log('clickScrapeTest')
-  if (!codeMangaRule.value) {
-    console.log('code.value is empty')
+const clickScrapeTest = async (url: string, json_rule: string) => {
+  if (!json_rule) {
+    console.log('JSON Rule is empty')
     return
   }
-  const rules = JSON.parse(codeMangaRule.value)
+  const rules = JSON.parse(json_rule)
   try {
-    const res = await ScraperService.Scrape(rules, url.value)
+    const res = await ScraperService.Scrape(rules, url)
     resultJson.value = JSON.stringify(res, null, 2)
     console.log(res)
   } catch (error) {
@@ -174,28 +238,26 @@ const clickScrapeTest = async () => {
   }
 }
 
-const scrapingRuleInput = reactive({
+const scrapingRuleDefault = {
   site_key: '',
   name: '',
-  domains: '',
-  enabled: true,
-})
+  domains_json: '[]',
+  enabled: 1,
+  chapter_rule_json: '',
+  manga_rule_json: '',
+}
+const scrapingRuleInput = reactive(scrapingRuleDefault)
 /* ====== SAVE RULES ====== */
 const saveScrapingRules = async () => {
   try {
-    const ruleData = new ScrapingRule()
+    const scrapingRuleRaw = toRaw(scrapingRuleInput)
+    const ruleData = new ScrapingRule(scrapingRuleRaw)
     ruleData.site_key = scrapingRuleInput.site_key
     ruleData.name = scrapingRuleInput.name
-    ruleData.domains_json = JSON.stringify(scrapingRuleInput.domains)
+    ruleData.domains_json = scrapingRuleInput.domains_json
     ruleData.enabled = scrapingRuleInput.enabled ? 1 : 0
-    ruleData.chapter_rule_json =
-      typeof codeChapterRule.value === 'string'
-        ? codeChapterRule.value
-        : JSON.stringify(codeChapterRule.value)
-    ruleData.manga_rule_json =
-      typeof codeMangaRule.value === 'string'
-        ? codeMangaRule.value
-        : JSON.stringify(codeMangaRule.value)
+    ruleData.chapter_rule_json = scrapingRuleInput.chapter_rule_json
+    ruleData.manga_rule_json = scrapingRuleInput.manga_rule_json
     await DatabaseService.SaveScrapingRule(ruleData)
   } catch (error) {
     console.log(error)
@@ -229,12 +291,28 @@ watchDebounced(
 )
 
 // watch codeMangaRule
-watchDebounced(codeMangaRule, v => {
-  // exit if empty
-  if (!v.trim()) {
-    return
-  }
-})
+// removed manual validation watcher since we use @validate event now
+
+watchDebounced(
+  () => scrapingRuleInput.manga_rule_json,
+  m => {
+    if (!m) return
+    try {
+      const mm = JSON.parse(m)
+      const obj = mm as Record<string, any>
+      if ('domains' in obj && Array.isArray(obj.domains)) {
+        scrapingRuleInput.domains_json = JSON.stringify(obj.domains)
+      }
+      if ('site' in obj) {
+        scrapingRuleInput.name = obj.site
+        scrapingRuleInput.site_key = obj.site.replace(/\s+/g, '').toLowerCase()
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  },
+  { debounce: 500, maxWait: 1000 },
+)
 
 /* ====== HELPER FUNCTIONS ====== */
 interface PageData {
