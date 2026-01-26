@@ -510,6 +510,11 @@ func (s *ScraperService) extractFieldGeneric(source interface{}, field FieldRule
 		return s.processTemplate(field.Template, source)
 	}
 
+	// If type is text (fixed value)
+	if field.Type == "text" {
+		return field.Text
+	}
+
 	// If type is css, source must be HTML string OR Selection (if passed from template parent)
 	if field.Type == "css" {
 		if sel, ok := source.(*goquery.Selection); ok {
@@ -565,24 +570,9 @@ func (s *ScraperService) extractFields(selection *goquery.Selection, rules []Fie
 			result[rule.Name] = s.extractJSON(jsonStr, rule)
 		case "template":
 			// Template field at the top level of extractFields (CSS/Static context)
-			// It needs to gather data from its children (which might be CSS rules)
-			// And then process the template.
-
-			// We can reuse extractFieldGeneric but we need to pass the selection as source?
-			// extractFieldGeneric expects source to be map[string]interface{} for template children lookups if using "From"
-			// BUT here in static extraction, children are usually relative CSS selectors.
-
-			// So we need a special handling for template in CSS context OR adapt extractFieldGeneric.
-			// Let's adapt extractFieldGeneric to handle Selection source for children.
-
-			// Actually, extractFieldGeneric handles template by extracting children first.
-			// If source is Selection, we need to handle that in the children loop.
-
-			// BUT extractFieldGeneric implementation for template expects source to be map if using From?
-			// No, let's look at extractFieldGeneric again.
-
 			result[rule.Name] = s.extractFieldGeneric(selection, rule)
-
+		case "text":
+			result[rule.Name] = rule.Text
 		default:
 			// Default to CSS extraction
 			result[rule.Name] = s.extractCSS(selection, rule)
@@ -682,15 +672,8 @@ func (s *ScraperService) extractJSON(jsonStr string, rule FieldRule) interface{}
 				childMap := make(map[string]interface{})
 				for _, child := range rule.Children {
 					// IMPORTANT: For children of a JSON array item, we pass the ITEM's JSON string
-					// However, if the child specifies 'From', it might be trying to access a different step?
-					// Usually, children of a 'json' multiple extraction are relative to the item.
-					// BUT, the schema allows 'From' on any rule.
-					// If 'From' is present, we should probably ignore the current item context?
-					// BUT extractJSON signature takes jsonStr (the current item).
-					// If we want to support 'From' inside a nested JSON loop, we'd need the global context, which we don't have here.
-					// assumption: Children of a JSON extraction operate on the extracted item.
-
-					childMap[child.Name] = s.extractJSON(value.String(), child)
+					// We use extractFieldGeneric to support mixed types (json, text, etc.)
+					childMap[child.Name] = s.extractFieldGeneric(value.String(), child)
 				}
 				items = append(items, childMap)
 			} else {
@@ -706,7 +689,7 @@ func (s *ScraperService) extractJSON(jsonStr string, rule FieldRule) interface{}
 		childMap := make(map[string]interface{})
 		for _, child := range rule.Children {
 			// Same logic: operate on the current object (res)
-			childMap[child.Name] = s.extractJSON(res.String(), child)
+			childMap[child.Name] = s.extractFieldGeneric(res.String(), child)
 		}
 		return childMap
 	}

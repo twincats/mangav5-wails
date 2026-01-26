@@ -198,6 +198,11 @@ export class FieldRule {
      */
     "template"?: string;
 
+    /**
+     * Text (Fixed Value)
+     */
+    "text"?: string;
+
     /** Creates a new FieldRule instance. */
     constructor($$source: Partial<FieldRule> = {}) {
         if (!("name" in $$source)) {

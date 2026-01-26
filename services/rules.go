@@ -56,6 +56,9 @@ type FieldRule struct {
 
 	// Template
 	Template string `json:"template,omitempty"`
+
+	// Text (Fixed Value)
+	Text string `json:"text,omitempty"`
 }
 
 type WaitConfig struct {

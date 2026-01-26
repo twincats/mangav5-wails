@@ -129,7 +129,7 @@
                 v-model="scrapingRuleInput.manga_rule_json"
                 language="json"
                 theme="vs-dark"
-                :jsonSchema="SiteRuleSchema"
+                :jsonSchema="MangaRuleSchema"
                 :formatOnLoad="true"
                 @validate="statusJson.manga_rule = $event"
               />
@@ -141,7 +141,7 @@
                 v-model="scrapingRuleInput.chapter_rule_json"
                 language="json"
                 theme="vs-dark"
-                :jsonSchema="SiteRuleSchema"
+                :jsonSchema="ChapterRuleSchema"
                 :formatOnLoad="true"
                 @validate="statusJson.chapter_rule = $event"
               />
@@ -174,7 +174,8 @@ import {
   CheckCircleFilled,
   CancelRound,
 } from '@vicons/material'
-import SiteRuleSchema from '@/assets/SiteRuleSchema.json'
+import MangaRuleSchema from '@/assets/MangaRuleSchema.json'
+import ChapterRuleSchema from '@/assets/ChapterRuleSchema.json'
 import {
   DownloadService,
   ScraperService,

@@ -1,23 +1,26 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Scraper Rule Schema v2",
+  "title": "Scraper Manga Rule Schema v2",
   "type": "object",
   "required": ["site", "domains", "strategy", "extract"],
-
   "properties": {
-    "site": { "type": "string", "minLength": 1 },
-
+    "site": {
+      "type": "string",
+      "minLength": 1
+    },
     "domains": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "format": "hostname"
+      },
       "minItems": 1
     },
-
     "strategy": {
       "type": "string",
       "enum": ["static", "browser", "api", "auto"]
     },
-
     "entry": {
       "type": "object",
       "properties": {
@@ -31,7 +34,6 @@
       },
       "required": ["url"]
     },
-
     "wait_config": {
       "type": "object",
       "properties": {
@@ -53,7 +55,6 @@
         "navigation_timeout_ms": { "type": "integer" }
       }
     },
-
     "api": {
       "type": "object",
       "required": ["steps"],
@@ -65,14 +66,12 @@
         }
       }
     },
-
     "extract": {
       "type": "array",
       "minItems": 1,
       "items": { "$ref": "#/definitions/fieldRule" }
     }
   },
-
   "allOf": [
     {
       "if": { "properties": { "strategy": { "const": "api" } } },
@@ -87,9 +86,44 @@
       "then": {
         "anyOf": [{ "required": ["api"] }, { "required": ["entry"] }]
       }
+    },
+    {
+      "properties": {
+        "extract": {
+          "contains": {
+            "type": "object",
+            "properties": { "name": { "const": "chapters" } },
+            "required": ["name"]
+          }
+        }
+      },
+      "required": ["extract"]
+    },
+    {
+      "properties": {
+        "extract": {
+          "contains": {
+            "type": "object",
+            "properties": { "name": { "const": "title" } },
+            "required": ["name"]
+          }
+        }
+      },
+      "required": ["extract"]
+    },
+    {
+      "properties": {
+        "extract": {
+          "contains": {
+            "type": "object",
+            "properties": { "name": { "const": "cover" } },
+            "required": ["name"]
+          }
+        }
+      },
+      "required": ["extract"]
     }
   ],
-
   "definitions": {
     "apiStep": {
       "type": "object",
@@ -109,7 +143,6 @@
         }
       }
     },
-
     "apiRequest": {
       "type": "object",
       "required": ["url"],
@@ -124,7 +157,6 @@
         }
       }
     },
-
     "fieldRule": {
       "type": "object",
       "required": ["name", "type"],
@@ -133,44 +165,33 @@
           "type": "string",
           "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
         },
-
         "type": {
           "type": "string",
           "enum": ["css", "json", "template", "text"]
         },
-
         "from": { "type": "string" },
-
         "selector": { "type": "string" },
         "attr": {
           "type": "array",
           "items": { "type": "string" }
         },
-
         "filter": { "type": "string" },
         "filter_mode": {
           "type": "string",
           "enum": ["has", "not"],
           "default": "has"
         },
-
         "path": { "type": "string" },
-
         "multiple": { "type": "boolean", "default": false },
         "trim": { "type": "boolean", "default": false },
-
         "regex": { "type": "string" },
-
         "template": { "type": "string" },
-
         "text": { "type": "string" },
-
         "children": {
           "type": "array",
           "items": { "$ref": "#/definitions/fieldRule" }
         }
       },
-
       "allOf": [
         {
           "if": { "properties": { "type": { "const": "json" } } },
@@ -183,6 +204,77 @@
         {
           "if": { "properties": { "type": { "const": "text" } } },
           "then": { "required": ["text"] }
+        },
+        {
+          "if": { "properties": { "name": { "const": "chapters" } } },
+          "then": {
+            "required": ["multiple", "children"],
+            "properties": {
+              "multiple": { "const": true },
+              "children": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "#/definitions/fieldRule" }
+              }
+            },
+            "allOf": [
+              {
+                "properties": {
+                  "children": {
+                    "contains": {
+                      "type": "object",
+                      "properties": { "name": { "const": "chapter_id" } },
+                      "required": ["name"]
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "children": {
+                    "contains": {
+                      "type": "object",
+                      "properties": { "name": { "const": "chapter" } },
+                      "required": ["name"]
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "children": {
+                    "contains": {
+                      "type": "object",
+                      "properties": { "name": { "const": "group_name" } },
+                      "required": ["name"]
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "children": {
+                    "contains": {
+                      "type": "object",
+                      "properties": { "name": { "const": "language" } },
+                      "required": ["name"]
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "children": {
+                    "contains": {
+                      "type": "object",
+                      "properties": { "name": { "const": "time" } },
+                      "required": ["name"]
+                    }
+                  }
+                }
+              }
+            ]
+          }
         }
       ]
     }

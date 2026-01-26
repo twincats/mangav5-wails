@@ -1,23 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Scraper Rule Schema v2",
+  "title": "Scraper Chapter Rule Schema v2",
   "type": "object",
   "required": ["site", "domains", "strategy", "extract"],
-
   "properties": {
     "site": { "type": "string", "minLength": 1 },
-
     "domains": {
       "type": "array",
       "items": { "type": "string" },
       "minItems": 1
     },
-
     "strategy": {
       "type": "string",
       "enum": ["static", "browser", "api", "auto"]
     },
-
     "entry": {
       "type": "object",
       "properties": {
@@ -31,7 +27,6 @@
       },
       "required": ["url"]
     },
-
     "wait_config": {
       "type": "object",
       "properties": {
@@ -53,7 +48,6 @@
         "navigation_timeout_ms": { "type": "integer" }
       }
     },
-
     "api": {
       "type": "object",
       "required": ["steps"],
@@ -65,14 +59,12 @@
         }
       }
     },
-
     "extract": {
       "type": "array",
       "minItems": 1,
       "items": { "$ref": "#/definitions/fieldRule" }
     }
   },
-
   "allOf": [
     {
       "if": { "properties": { "strategy": { "const": "api" } } },
@@ -87,9 +79,20 @@
       "then": {
         "anyOf": [{ "required": ["api"] }, { "required": ["entry"] }]
       }
+    },
+    {
+      "properties": {
+        "extract": {
+          "contains": {
+            "type": "object",
+            "properties": { "name": { "const": "pages" } },
+            "required": ["name"]
+          }
+        }
+      },
+      "required": ["extract"]
     }
   ],
-
   "definitions": {
     "apiStep": {
       "type": "object",
@@ -109,7 +112,6 @@
         }
       }
     },
-
     "apiRequest": {
       "type": "object",
       "required": ["url"],
@@ -124,7 +126,6 @@
         }
       }
     },
-
     "fieldRule": {
       "type": "object",
       "required": ["name", "type"],
@@ -133,44 +134,33 @@
           "type": "string",
           "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
         },
-
         "type": {
           "type": "string",
           "enum": ["css", "json", "template", "text"]
         },
-
         "from": { "type": "string" },
-
         "selector": { "type": "string" },
         "attr": {
           "type": "array",
           "items": { "type": "string" }
         },
-
         "filter": { "type": "string" },
         "filter_mode": {
           "type": "string",
           "enum": ["has", "not"],
           "default": "has"
         },
-
         "path": { "type": "string" },
-
         "multiple": { "type": "boolean", "default": false },
         "trim": { "type": "boolean", "default": false },
-
         "regex": { "type": "string" },
-
         "template": { "type": "string" },
-
         "text": { "type": "string" },
-
         "children": {
           "type": "array",
           "items": { "$ref": "#/definitions/fieldRule" }
         }
       },
-
       "allOf": [
         {
           "if": { "properties": { "type": { "const": "json" } } },
@@ -183,6 +173,59 @@
         {
           "if": { "properties": { "type": { "const": "text" } } },
           "then": { "required": ["text"] }
+        },
+        {
+          "if": {
+            "properties": { "name": { "const": "pages" } },
+            "required": ["name"]
+          },
+          "then": {
+            "properties": { "type": { "enum": ["css", "json", "template"] } }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": { "const": "pages" },
+              "type": { "enum": ["css", "json"] }
+            },
+            "required": ["name", "type"]
+          },
+          "then": {
+            "required": ["multiple"],
+            "properties": { "multiple": { "const": true } }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": { "const": "pages" },
+              "type": { "const": "template" }
+            },
+            "required": ["name", "type"]
+          },
+          "then": {
+            "required": ["children"],
+            "properties": {
+              "children": {
+                "type": "array",
+                "items": { "$ref": "#/definitions/fieldRule" }
+              }
+            },
+            "allOf": [
+              {
+                "properties": {
+                  "children": {
+                    "contains": {
+                      "type": "object",
+                      "properties": { "multiple": { "const": true } },
+                      "required": ["multiple"]
+                    }
+                  }
+                }
+              }
+            ]
+          }
         }
       ]
     }
