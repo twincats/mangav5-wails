@@ -163,7 +163,10 @@
 
         "template": { "type": "string" },
 
-        "text": { "type": "string" },
+        "text": {
+          "type": "string",
+          "description": "Required when type is 'text'. The static text value."
+        },
 
         "children": {
           "type": "array",

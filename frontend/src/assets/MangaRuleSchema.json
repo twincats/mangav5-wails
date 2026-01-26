@@ -86,42 +86,6 @@
       "then": {
         "anyOf": [{ "required": ["api"] }, { "required": ["entry"] }]
       }
-    },
-    {
-      "properties": {
-        "extract": {
-          "contains": {
-            "type": "object",
-            "properties": { "name": { "const": "chapters" } },
-            "required": ["name"]
-          }
-        }
-      },
-      "required": ["extract"]
-    },
-    {
-      "properties": {
-        "extract": {
-          "contains": {
-            "type": "object",
-            "properties": { "name": { "const": "title" } },
-            "required": ["name"]
-          }
-        }
-      },
-      "required": ["extract"]
-    },
-    {
-      "properties": {
-        "extract": {
-          "contains": {
-            "type": "object",
-            "properties": { "name": { "const": "cover" } },
-            "required": ["name"]
-          }
-        }
-      },
-      "required": ["extract"]
     }
   ],
   "definitions": {
@@ -186,7 +150,10 @@
         "trim": { "type": "boolean", "default": false },
         "regex": { "type": "string" },
         "template": { "type": "string" },
-        "text": { "type": "string" },
+        "text": {
+          "type": "string",
+          "description": "Required when type is 'text'. The static text value."
+        },
         "children": {
           "type": "array",
           "items": { "$ref": "#/definitions/fieldRule" }

@@ -131,6 +131,7 @@
                 theme="vs-dark"
                 :jsonSchema="MangaRuleSchema"
                 :formatOnLoad="true"
+                :customValidator="validateMangaRule"
                 @validate="statusJson.manga_rule = $event"
               />
             </div>
@@ -143,6 +144,7 @@
                 theme="vs-dark"
                 :jsonSchema="ChapterRuleSchema"
                 :formatOnLoad="true"
+                :customValidator="validateChapterRule"
                 @validate="statusJson.chapter_rule = $event"
               />
             </div>
@@ -184,6 +186,11 @@ import { Events } from '@wailsio/runtime'
 import { watchDebounced } from '@vueuse/core'
 import { DatabaseService } from '../../bindings/mangav5/services'
 import { ScrapingRule } from '../../bindings/mangav5/internal/models'
+import {
+  validateMangaRule,
+  validateChapterRule,
+  isValidPages,
+} from '../utils/validationHelpers'
 
 const resultJson = ref('')
 const dialog = useDialog()
@@ -316,30 +323,4 @@ watchDebounced(
 )
 
 /* ====== HELPER FUNCTIONS ====== */
-interface PageData {
-  pages: string[]
-}
-
-function isValidUrl(str: string): boolean {
-  try {
-    new URL(str)
-    return true
-  } catch {
-    return false
-  }
-}
-
-function isValidPages(data: unknown): data is PageData {
-  if (typeof data !== 'object' || data === null) return false
-
-  const obj = data as Record<string, any>
-  if (!('pages' in obj)) return false
-
-  const pages = obj.pages
-  if (!Array.isArray(pages)) return false
-
-  return pages.every(
-    (url: string) => typeof url === 'string' && isValidUrl(url),
-  )
-}
 </script>

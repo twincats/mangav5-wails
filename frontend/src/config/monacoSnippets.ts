@@ -169,5 +169,103 @@ export const scrapingRuleSnippets = [
   ]
 }`,
     insertTextRules: 4,
-  }
+  },
+  // Field Rules Snippets
+  {
+    label: 'field-text',
+    kind: 27,
+    detail: 'Static Text Field Rule',
+    documentation: 'Extracts a static text value',
+    insertText: `{
+  "name": "\${1:fieldName}",
+  "type": "text",
+  "text": "\${2:value}"
+}`,
+    insertTextRules: 4,
+  },
+  {
+    label: 'field-css',
+    kind: 27,
+    detail: 'CSS Selector Field Rule',
+    documentation: 'Extracts content using CSS selector',
+    insertText: `{
+  "name": "\${1:fieldName}",
+  "type": "css",
+  "selector": "\${2:selector}",
+  "trim": true
+}`,
+    insertTextRules: 4,
+  },
+  {
+    label: 'field-attr',
+    kind: 27,
+    detail: 'Attribute Extraction Field Rule',
+    documentation: 'Extracts an attribute from an element',
+    insertText: `{
+  "name": "\${1:fieldName}",
+  "type": "css",
+  "selector": "\${2:selector}",
+  "attr": ["\${3:src}"],
+  "trim": true
+}`,
+    insertTextRules: 4,
+  },
+  {
+    label: 'field-json',
+    kind: 27,
+    detail: 'JSON Path Field Rule',
+    documentation: 'Extracts value from JSON response using GJSON path',
+    insertText: `{
+  "name": "\${1:fieldName}",
+  "type": "json",
+  "path": "\${2:data.title}"
+}`,
+    insertTextRules: 4,
+  },
+  {
+    label: 'field-template',
+    kind: 27,
+    detail: 'Template Field Rule',
+    documentation: 'Combines multiple values using a template',
+    insertText: `{
+  "name": "\${1:fieldName}",
+  "type": "template",
+  "template": "{{ .\${2:variable} }}",
+  "trim": true
+}`,
+    insertTextRules: 4,
+  },
+  {
+    label: 'field-regex',
+    kind: 27,
+    detail: 'Regex Extraction Field Rule',
+    documentation: 'Extracts content using Regex capture group',
+    insertText: `{
+  "name": "\${1:fieldName}",
+  "type": "css",
+  "selector": "\${2:selector}",
+  "regex": "\${3:pattern (capture)}"
+}`,
+    insertTextRules: 4,
+  },
+  {
+    label: 'field-children',
+    kind: 27,
+    detail: 'Nested Children Field Rule',
+    documentation: 'Extracts a list of items',
+    insertText: `{
+  "name": "\${1:items}",
+  "type": "css",
+  "selector": "\${2:.item}",
+  "multiple": true,
+  "children": [
+    {
+      "name": "\${3:subField}",
+      "type": "css",
+      "selector": "\${4:.sub}"
+    }
+  ]
+}`,
+    insertTextRules: 4,
+  },
 ]

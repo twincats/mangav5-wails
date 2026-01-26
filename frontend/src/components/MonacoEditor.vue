@@ -26,6 +26,7 @@ interface Props {
   jsonSchemaFileMatch?: string[]
   formatOnLoad?: boolean
   readOnly?: boolean
+  customValidator?: (value: string) => monaco.editor.IMarkerData[]
 }
 const props = withDefaults(defineProps<Props>(), {
   language: 'javascript',
@@ -228,10 +229,20 @@ onMounted(() => {
       }
     }
 
+    // 2.1 Run custom validator if provided
+    if (props.customValidator) {
+      const customMarkers = props.customValidator(value)
+      monaco.editor.setModelMarkers(model, 'custom-validator', customMarkers)
+    }
+
     // 3. Check for Monaco markers (schema errors or other language errors)
     const markers = monaco.editor.getModelMarkers({ resource: model.uri })
+    // Treat both Errors and Warnings as validation failures
+    // Missing required fields often appear as Warnings in Monaco JSON
     const hasErrors = markers.some(
-      marker => marker.severity === monaco.MarkerSeverity.Error,
+      marker =>
+        marker.severity === monaco.MarkerSeverity.Error ||
+        marker.severity === monaco.MarkerSeverity.Warning,
     )
 
     emit('validate', !hasErrors)
