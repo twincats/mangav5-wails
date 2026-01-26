@@ -1,45 +1,104 @@
 export const scrapingRuleSnippets = [
   {
-    label: 'scraping-rule-template',
+    label: 'scraping-rule-manga-template',
     kind: 27, // monaco.languages.CompletionItemKind.Snippet
+    sortText: 'z_20_scraping',
     insertText: `{
   "site": "\${1:My Manga Site}",
   "domains": ["\${2:example.com}"],
-  "strategy": "\${3:static}",
-  "wait_config": {
-    "container_selectors": [],
-    "content_selectors": [],
-    "min_text_length": 0,
-    "require_image_loaded": false,
-    "timeout_ms": 15000,
-    "poll_ms": 500
-  },
-  "entry": {
-    "url": "\${4:https://example.com/manga/123}",
+  "strategy": "\${3|static,api,browser,auto|}",
+  \${4:"entry": {
+    "url": "\${5:https://example.com/manga/123}",
     "method": "GET",
-    "headers": {}
-  },
+    "headers": {\\}
+  \\},}
   "extract": [
     {
       "name": "title",
-      "type": "css",
-      "selector": "h1",
-      "trim": true
+      "type": "\${6|css,json,template,text|}",
+      "selector": "h1"
     },
     {
-      "name": "pages",
-      "type": "css",
+      "name": "cover",
+      "type": "\${7|css,json,template,text|}",
+      "selector": "h1"
+    },
+    {
+      "name": "chapters",
+      "type": "\${8|css,json,template,text|}",
       "selector": ".page img",
-      "attr": ["src"],
-      "multiple": true
+      "multiple": true,
+      "children": [
+        {
+          "name": "chapter_id",
+          "type": "css",
+          "selector": ".page img"
+        },
+        {
+          "name": "chapter",
+          "type": "css",
+          "selector": ".page img"
+        },
+        {
+          "name": "group_name",
+          "type": "text",
+          "text": "\${9:Westmanga}"
+        },
+        {
+          "name": "language",
+          "type": "text",
+          "text": "\${10|en,id|}"
+        },
+        {
+          "name": "time",
+          "type": "css",
+          "selector": ".page img"
+        }
+      ]
     }
   ]
 }`,
     insertTextRules: 4, // monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
   },
   {
+    label: 'scraping-rule-chapter-template',
+    kind: 27,
+    sortText: 'z_20_scraping',
+    insertText: `{
+  "site": "\${1:My Manga Site}",
+  "domains": ["\${2:example.com}"],
+  "strategy": "\${3|static,api,browser,auto|}",
+  \${4:"entry": {
+    "url": "\${5:https://example.com/manga/123}",
+    "method": "GET",
+    "headers": {\\}
+  \\},}
+  \${6:"api": {
+    "steps": [
+      {
+        "id": "step1",
+        "request": {
+          "url": "\${7:https://api.mangadex.org/manga/{id\\}}"
+        \\}
+      \\}
+    ]
+  \\},}
+  "extract": [
+    {
+      "name": "pages",
+      "type": "\${8|css,json,template,text|}",
+      "multiple": true,
+      \${9:"from": "step1",}
+      "selector": "h1"
+    }
+  ]
+}`,
+    insertTextRules: 4,
+  },
+  {
     label: 'scraping-rule-static',
     kind: 27,
+    sortText: 'z_20_scraping',
     insertText: `{
   "site": "\${1:Asmotoon}",
   "domains": ["\${2:asmotoon.com}"],
@@ -61,7 +120,7 @@ export const scrapingRuleSnippets = [
         "selector": "\${5:#chapters a}",
         "children": [
             {
-                "name": "url",
+                "name": "chapter_id",
                 "type": "css",
                 "attr": ["href"],
                 "regex": "/chapter/([^/]+)"
@@ -71,6 +130,16 @@ export const scrapingRuleSnippets = [
                 "type": "css",
                 "selector": ".text-sm.truncate",
                 "trim": true
+            },
+            {
+              "name": "group_name",
+              "type": "text",
+              "text": "\${6:Asmotoon}"
+            },
+            {
+              "name": "language",
+              "type": "text",
+              "text": "\${7|en,id|}"
             },
             {
                 "name": "time",
@@ -87,6 +156,7 @@ export const scrapingRuleSnippets = [
   {
     label: 'scraping-rule-browser',
     kind: 27,
+    sortText: 'z_20_scraping',
     insertText: `{
   "site": "\${1:Westmanga}",
   "domains": ["\${2:westmanga.me}"],
@@ -130,6 +200,7 @@ export const scrapingRuleSnippets = [
   {
     label: 'scraping-rule-api',
     kind: 27,
+    sortText: 'z_20_scraping',
     insertText: `{
   "site": "\${1:Mangadex}",
   "domains": ["\${2:mangadex.org}"],
@@ -174,6 +245,7 @@ export const scrapingRuleSnippets = [
   {
     label: 'field-text',
     kind: 27,
+    sortText: 'z_10_field',
     detail: 'Static Text Field Rule',
     documentation: 'Extracts a static text value',
     insertText: `{
@@ -186,6 +258,7 @@ export const scrapingRuleSnippets = [
   {
     label: 'field-css',
     kind: 27,
+    sortText: 'z_10_field',
     detail: 'CSS Selector Field Rule',
     documentation: 'Extracts content using CSS selector',
     insertText: `{
@@ -199,6 +272,7 @@ export const scrapingRuleSnippets = [
   {
     label: 'field-attr',
     kind: 27,
+    sortText: 'z_10_field',
     detail: 'Attribute Extraction Field Rule',
     documentation: 'Extracts an attribute from an element',
     insertText: `{
@@ -213,6 +287,7 @@ export const scrapingRuleSnippets = [
   {
     label: 'field-json',
     kind: 27,
+    sortText: 'z_10_field',
     detail: 'JSON Path Field Rule',
     documentation: 'Extracts value from JSON response using GJSON path',
     insertText: `{
@@ -225,6 +300,7 @@ export const scrapingRuleSnippets = [
   {
     label: 'field-template',
     kind: 27,
+    sortText: 'z_10_field',
     detail: 'Template Field Rule',
     documentation: 'Combines multiple values using a template',
     insertText: `{
@@ -238,6 +314,7 @@ export const scrapingRuleSnippets = [
   {
     label: 'field-regex',
     kind: 27,
+    sortText: 'z_10_field',
     detail: 'Regex Extraction Field Rule',
     documentation: 'Extracts content using Regex capture group',
     insertText: `{
@@ -251,6 +328,7 @@ export const scrapingRuleSnippets = [
   {
     label: 'field-children',
     kind: 27,
+    sortText: 'z_10_field',
     detail: 'Nested Children Field Rule',
     documentation: 'Extracts a list of items',
     insertText: `{

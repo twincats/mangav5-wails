@@ -134,10 +134,43 @@ function registerJsonSnippets() {
         word.endColumn,
       )
 
-      const suggestions = scrapingRuleSnippets.map(snippet => ({
-        ...snippet,
-        range,
-      })) as monaco.languages.CompletionItem[]
+      // Check context: are we inside a JSON object/array?
+      // Heuristic: scan backwards for unclosed { or [
+      const textBefore = model.getValueInRange({
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: position.lineNumber,
+        endColumn: position.column,
+      })
+
+      let depth = 0
+      let isInside = false
+
+      for (let i = textBefore.length - 1; i >= 0; i--) {
+        const char = textBefore[i]
+        if (char === '}' || char === ']') {
+          depth++
+        } else if (char === '{' || char === '[') {
+          if (depth > 0) {
+            depth--
+          } else {
+            isInside = true
+            break
+          }
+        }
+      }
+
+      const suggestions = scrapingRuleSnippets
+        .filter(snippet => {
+          if (snippet.label.startsWith('field-')) {
+            return isInside
+          }
+          return true
+        })
+        .map(snippet => ({
+          ...snippet,
+          range,
+        })) as monaco.languages.CompletionItem[]
 
       return { suggestions }
     },

@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"mangav5/internal/models"
+	"mangav5/internal/util"
 )
 
 type ChapterRepo struct {
@@ -52,6 +53,11 @@ func (r *ChapterRepo) BatchInsert(ctx context.Context, chapters []models.Chapter
 	defer stmt.Close()
 
 	for _, c := range chapters {
+		if c.ReleaseTimeTS == 0 && c.ReleaseTimeRaw != "" {
+			if ts, _ := util.ParseReleaseTime(c.ReleaseTimeRaw); ts != nil {
+				c.ReleaseTimeTS = *ts
+			}
+		}
 		_, err := stmt.ExecContext(ctx,
 			c.MangaID, c.ChapterNumber, c.ChapterTitle, c.Volume, c.TranslatorGroup, c.Language,
 			c.ReleaseTimeTS, c.ReleaseTimeRaw, c.StatusRead, c.Path, c.IsCompressed, c.Status,

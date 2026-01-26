@@ -46,7 +46,11 @@
         >
           Download
         </n-button>
-        <n-button type="primary" @click="saveScrapingRules">
+        <n-button
+          type="primary"
+          @click="saveScrapingRules"
+          :disabled="!readyToSave"
+        >
           Save Rules
         </n-button>
         <n-button type="primary"> Load Rules </n-button>
@@ -194,6 +198,7 @@ import {
 
 const resultJson = ref('')
 const dialog = useDialog()
+const message = useMessage()
 const activeTab = ref('editor1')
 const statusJson = reactive({
   manga_rule: false,
@@ -260,15 +265,18 @@ const saveScrapingRules = async () => {
   try {
     const scrapingRuleRaw = toRaw(scrapingRuleInput)
     const ruleData = new ScrapingRule(scrapingRuleRaw)
-    ruleData.site_key = scrapingRuleInput.site_key
-    ruleData.name = scrapingRuleInput.name
-    ruleData.domains_json = scrapingRuleInput.domains_json
-    ruleData.enabled = scrapingRuleInput.enabled ? 1 : 0
-    ruleData.chapter_rule_json = scrapingRuleInput.chapter_rule_json
-    ruleData.manga_rule_json = scrapingRuleInput.manga_rule_json
     await DatabaseService.SaveScrapingRule(ruleData)
+    dialog.success({
+      title: 'Success',
+      content: 'Scraping Rule saved successfully',
+      positiveText: 'OK',
+      onPositiveClick: () => {
+        Object.assign(scrapingRuleInput, scrapingRuleDefault)
+      },
+    })
   } catch (error) {
     console.log(error)
+    message.error(`${error}`)
   }
 }
 
@@ -321,6 +329,19 @@ watchDebounced(
   },
   { debounce: 500, maxWait: 1000 },
 )
+
+/* ====== COMPUTED VALUES ====== */
+const readyToSave = computed(() => {
+  return (
+    scrapingRuleInput.site_key &&
+    scrapingRuleInput.name &&
+    scrapingRuleInput.domains_json &&
+    scrapingRuleInput.chapter_rule_json &&
+    scrapingRuleInput.manga_rule_json &&
+    statusJson.manga_rule &&
+    statusJson.chapter_rule
+  )
+})
 
 /* ====== HELPER FUNCTIONS ====== */
 </script>
