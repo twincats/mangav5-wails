@@ -120,6 +120,12 @@ export function ListScrapingRules(): $CancellablePromise<models$0.ScrapingRule[]
     });
 }
 
+export function ListScrapingRulesBasic(): $CancellablePromise<models$0.ScrapingRule[]> {
+    return $Call.ByID(4162381753).then(($result: any) => {
+        return $$createType14($result);
+    });
+}
+
 export function SaveScrapingRule(rule: models$0.ScrapingRule): $CancellablePromise<void> {
     return $Call.ByID(1443302969, rule);
 }

@@ -42,7 +42,9 @@ func (s *BrowserService) initBrowser() error {
 	// Kita nonaktifkan Leakless untuk menghindari false positive antivirus di Windows
 	l := launcher.New().
 		Headless(true).
-		Leakless(false)
+		Leakless(false).
+		Set("disable-web-security", "true").         // Disable CORS
+		Set("disable-site-isolation-trials", "true") // Disable site isolation
 
 	// Coba cari instalasi browser di sistem (Chrome/Edge/Chromium)
 	// Jika ditemukan, gunakan binary tersebut alih-alih mendownload
@@ -98,29 +100,46 @@ func (s *BrowserService) ScrapePage(url string, selector string) ScrapeResult {
 	res := ScrapeResult{}
 
 	// Ambil Title
-	res.Title = page.MustInfo().Title
+	if info, err := page.Info(); err == nil {
+		res.Title = info.Title
+	}
 
-	// Ambil Content Text (jika ada selector)
+	// Ambil Content berdasarkan selector
 	if selector != "" {
 		if el, err := page.Element(selector); err == nil {
-			res.Content = el.MustText()
+			if text, err := el.Text(); err == nil {
+				res.Content = text
+			}
 		}
 	} else {
-		// Jika tidak ada selector, ambil seluruh body text
-		res.Content = page.MustElement("body").MustText()
+		// Default ambil body text jika tidak ada selector
+		if el, err := page.Element("body"); err == nil {
+			if text, err := el.Text(); err == nil {
+				res.Content = text
+			}
+		}
 	}
 
 	// Contoh: Ambil semua gambar di halaman
 	// Evaluasi JS untuk mengambil src dari semua tag img
-	// Ini contoh penggunaan MustEval
-	imgList := page.MustEval(`() => Array.from(document.querySelectorAll('img')).map(i => i.src)`).Arr()
-	for _, img := range imgList {
-		if str, ok := img.Val().(string); ok && str != "" {
-			res.Images = append(res.Images, str)
+	imgList, err := page.Eval(`() => Array.from(document.querySelectorAll('img')).map(i => i.src)`)
+	if err == nil {
+		for _, img := range imgList.Value.Arr() {
+			if str, ok := img.Val().(string); ok && str != "" {
+				res.Images = append(res.Images, str)
+			}
 		}
 	}
 
 	return res
+}
+
+// Close menutup browser instance
+func (s *BrowserService) Close() error {
+	if s.browser != nil {
+		return s.browser.Close()
+	}
+	return nil
 }
 
 // Screenshot mengambil screenshot halaman

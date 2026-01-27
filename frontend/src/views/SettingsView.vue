@@ -111,9 +111,9 @@
             <PlaylistAddFilled />
           </n-icon>
         </n-button>
-        <n-button secondary type="primary">
+        <n-button secondary type="primary" @click="clearInput">
           <n-icon>
-            <PostAddFilled />
+            <ClearFilled />
           </n-icon>
         </n-button>
       </div>
@@ -186,9 +186,10 @@
             <n-list-item
               v-for="rule in listScrapeRuleDb"
               :key="rule.id"
-              @click="loadRuleToInput(rule)"
+              @click="loadRuleToInput(rule.site_key)"
             >
-              {{ rule.name }} - {{ rule.site_key }}
+              {{ rule.site_key }} -
+              {{ JSON.parse(rule.domains_json).join(', ') }}
             </n-list-item>
           </n-list>
         </n-scrollbar>
@@ -201,7 +202,7 @@
 <script setup lang="ts">
 import {
   PlaylistAddFilled,
-  PostAddFilled,
+  ClearFilled,
   CheckCircleFilled,
   CancelRound,
   AssignmentOutlined,
@@ -243,21 +244,31 @@ const openLoadModal = async () => {
     loadRuleModalVisible.value = true
     return
   }
-  listScrapeRuleDb.value = await DatabaseService.ListScrapingRules()
+  listScrapeRuleDb.value = await DatabaseService.ListScrapingRulesBasic()
   loadRuleModalVisible.value = true
 }
 
-const loadRuleToInput = (rule: ScrapingRule) => {
-  Object.assign(scrapingRuleInput, rule)
-  loadRuleModalVisible.value = false
+const loadRuleToInput = async (site_key: string) => {
+  try {
+    const rule = await DatabaseService.GetScrapingRule(site_key)
+    if (!rule) {
+      message.error('Rule not found')
+      return
+    }
+    Object.assign(scrapingRuleInput, rule)
+    loadRuleModalVisible.value = false
 
-  // Manually trigger validation since editors might be inactive
-  if (rule.manga_rule_json) {
-    statusJson.manga_rule = validateMangaRule(rule.manga_rule_json).length === 0
-  }
-  if (rule.chapter_rule_json) {
-    statusJson.chapter_rule =
-      validateChapterRule(rule.chapter_rule_json).length === 0
+    // Manually trigger validation since editors might be inactive
+    if (rule.manga_rule_json) {
+      statusJson.manga_rule =
+        validateMangaRule(rule.manga_rule_json).length === 0
+    }
+    if (rule.chapter_rule_json) {
+      statusJson.chapter_rule =
+        validateChapterRule(rule.chapter_rule_json).length === 0
+    }
+  } catch (error) {
+    message.error(`${error}`)
   }
 }
 
@@ -311,7 +322,19 @@ const scrapingRuleDefault = {
   chapter_rule_json: '',
   manga_rule_json: '',
 }
-const scrapingRuleInput = reactive(scrapingRuleDefault)
+const scrapingRuleInput = reactive({ ...scrapingRuleDefault })
+
+const clearInput = () => {
+  // Reset fields to default
+  Object.assign(scrapingRuleInput, scrapingRuleDefault)
+  // Remove ID if it exists (from loaded rule)
+  if ('id' in scrapingRuleInput) {
+    delete (scrapingRuleInput as any).id
+  }
+  // Reset ID for validation status as well if needed
+  statusJson.manga_rule = false
+  statusJson.chapter_rule = false
+}
 /* ====== SAVE RULES ====== */
 const saveScrapingRules = async () => {
   try {
@@ -323,7 +346,7 @@ const saveScrapingRules = async () => {
       content: 'Scraping Rule saved successfully',
       positiveText: 'OK',
       onPositiveClick: () => {
-        Object.assign(scrapingRuleInput, scrapingRuleDefault)
+        clearInput()
       },
     })
   } catch (error) {

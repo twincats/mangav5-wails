@@ -105,3 +105,25 @@ func (r *ScrapingRuleRepo) Delete(ctx context.Context, siteKey string) error {
 	_, err := r.DB.ExecContext(ctx, `DELETE FROM scraping_rules WHERE site_key=?`, siteKey)
 	return err
 }
+
+func (r *ScrapingRuleRepo) ListBasic(ctx context.Context) ([]models.ScrapingRule, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT id, site_key, domains_json
+		FROM scraping_rules
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []models.ScrapingRule
+	for rows.Next() {
+		var s models.ScrapingRule
+		if err := rows.Scan(&s.ID, &s.SiteKey, &s.DomainsJSON); err != nil {
+			return nil, err
+		}
+		results = append(results, s)
+	}
+	return results, nil
+}

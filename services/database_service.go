@@ -122,6 +122,10 @@ func (s *DatabaseService) ListScrapingRules(ctx context.Context) ([]models.Scrap
 	return s.scrapingRuleRepo.List(ctx)
 }
 
+func (s *DatabaseService) ListScrapingRulesBasic(ctx context.Context) ([]models.ScrapingRule, error) {
+	return s.scrapingRuleRepo.ListBasic(ctx)
+}
+
 func (s *DatabaseService) GetScrapingRule(ctx context.Context, siteKey string) (*models.ScrapingRule, error) {
 	return s.scrapingRuleRepo.GetBySiteKey(ctx, siteKey)
 }

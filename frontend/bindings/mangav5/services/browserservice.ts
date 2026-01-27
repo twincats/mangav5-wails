@@ -22,6 +22,13 @@ export function Cleanup(): $CancellablePromise<void> {
 }
 
 /**
+ * Close menutup browser instance
+ */
+export function Close(): $CancellablePromise<void> {
+    return $Call.ByID(1826705462);
+}
+
+/**
  * ScrapFull mengambil seluruh HTML halaman setelah render selesai
  */
 export function ScrapFull(url: string): $CancellablePromise<string> {

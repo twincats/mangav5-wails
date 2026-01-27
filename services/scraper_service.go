@@ -7,11 +7,14 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-resty/resty/v2"
 	"github.com/tidwall/gjson"
 )
+
+const DefaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 
 // ScraperService handles rule-based scraping
 type ScraperService struct {
@@ -23,6 +26,9 @@ type ScraperService struct {
 func NewScraperService(bs *BrowserService) *ScraperService {
 	client := resty.New()
 	client.SetCookieJar(nil) // Enable CookieJar
+	client.SetHeader("User-Agent", DefaultUserAgent)
+	client.SetTimeout(30 * time.Second)
+
 	return &ScraperService{
 		browserService: bs,
 		client:         client,
@@ -124,8 +130,10 @@ func (s *ScraperService) extractParamsFromURLTemplate(templateStr, urlStr string
 	// We use [^/]+ to match the segment (stops at next slash)
 	regexStr = strings.ReplaceAll(regexStr, "\\{id\\}", "(?P<id>[^/]+)")
 
-	// 3. Anchor and allow optional trailing slash
-	regexStr = "^" + regexStr + "/?$"
+	// 3. Anchor and allow optional trailing slash and extra segments
+	// Was: regexStr = "^" + regexStr + "/?$"
+	// New: Allow anything after the match if it starts with /
+	regexStr = "^" + regexStr + "(?:/.*)?$"
 
 	re, err := regexp.Compile(regexStr)
 	if err != nil {
@@ -182,6 +190,7 @@ func (s *ScraperService) scrapeStatic(url string, rule SiteRule, params map[stri
 	}
 
 	req := s.client.R()
+	req.SetHeader("User-Agent", DefaultUserAgent)
 	if rule.Entry != nil && rule.Entry.Headers != nil {
 		req.SetHeaders(rule.Entry.Headers)
 	}
@@ -322,6 +331,7 @@ func (s *ScraperService) executeAPISteps(ctx map[string]interface{}, steps []API
 		}
 
 		req := s.client.R()
+		req.SetHeader("User-Agent", DefaultUserAgent)
 		if step.Request.Headers != nil {
 			req.SetHeaders(step.Request.Headers)
 		}
