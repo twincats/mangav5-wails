@@ -188,8 +188,9 @@
               :key="rule.id"
               @click="loadRuleToInput(rule.site_key)"
             >
-              {{ rule.site_key }} -
-              {{ JSON.parse(rule.domains_json).join(', ') }}
+              {{ rule.name }}
+              -
+              {{ JSON.parse(rule.domains_json)[0] }}
             </n-list-item>
           </n-list>
         </n-scrollbar>
@@ -334,6 +335,11 @@ const clearInput = () => {
   // Reset ID for validation status as well if needed
   statusJson.manga_rule = false
   statusJson.chapter_rule = false
+
+  // Reset input yang lainnya
+  urlRule.url_manga_rule = ''
+  urlRule.url_chapter_rule = ''
+  resultJson.value = ''
 }
 /* ====== SAVE RULES ====== */
 const saveScrapingRules = async () => {

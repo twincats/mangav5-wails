@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 	"text/template"
@@ -42,6 +43,30 @@ func (s *ScraperService) Scrape(rule SiteRule, overrideURL string) (map[string]i
 
 	// Handle Override URL (User Input)
 	if targetURL != "" {
+		// Parse URL to handle query parameters (like offset, limit)
+		// We do this before regex extraction so that ?offset=100 doesn't pollute the ID extraction
+		u, err := url.Parse(targetURL)
+		if err == nil {
+			// Extract query parameters
+			query := u.Query()
+			for k, v := range query {
+				if len(v) > 0 {
+					params[k] = v[0]
+				}
+			}
+
+			// Use the path part for ID extraction logic
+			// Reconstruct URL without query params for the pattern matching
+			// Note: We keep the scheme and host if present
+			targetURLWithoutQuery := targetURL
+			if strings.Contains(targetURL, "?") {
+				targetURLWithoutQuery = strings.Split(targetURL, "?")[0]
+			}
+			
+			// Use the cleaner URL for subsequent ID extraction
+			targetURL = targetURLWithoutQuery
+		}
+
 		// Case 1: Input is a Full URL (e.g. https://site.com/manga/id/)
 		if strings.HasPrefix(targetURL, "http") {
 			// Try to extract params using Entry URL as a template
@@ -286,11 +311,20 @@ func (s *ScraperService) scrapeAPI(url string, rule SiteRule, params map[string]
 		return nil, fmt.Errorf("api strategy requires api steps")
 	}
 
-	// Context to store results from steps
+	// Initialize Context
 	ctx := make(map[string]interface{})
 	for k, v := range params {
 		ctx[k] = v
 	}
+
+	// Ensure default pagination parameters if missing
+	if _, ok := ctx["offset"]; !ok {
+		ctx["offset"] = "0"
+	}
+	if _, ok := ctx["limit"]; !ok {
+		ctx["limit"] = "100"
+	}
+
 	ctx["url"] = url
 	// Default 'id' to url for convenience when passing IDs directly
 	if _, ok := ctx["id"]; !ok {
