@@ -53,7 +53,7 @@
         >
           Save Rules
         </n-button>
-        <n-button type="primary"> Load Rules </n-button>
+        <n-button type="primary" @click="openLoadModal"> Load Rules </n-button>
       </div>
     </div>
     <!-- second row -->
@@ -170,6 +170,31 @@
         </n-tabs>
       </div>
     </div>
+    <!-- modal for loading scraping rules -->
+    <n-modal
+      v-model:show="loadRuleModalVisible"
+      preset="dialog"
+      title="Load Scraping Rules"
+      size="medium"
+      transform-origin="center"
+      :auto-focus="false"
+      :icon="() => h(NIcon, null, { default: () => h(AssignmentOutlined) })"
+    >
+      <div>
+        <n-scrollbar class="pr-4 max-h-300px">
+          <n-list hoverable clickable>
+            <n-list-item
+              v-for="rule in listScrapeRuleDb"
+              :key="rule.id"
+              @click="loadRuleToInput(rule)"
+            >
+              {{ rule.name }} - {{ rule.site_key }}
+            </n-list-item>
+          </n-list>
+        </n-scrollbar>
+      </div>
+      <template #footer> Footer </template>
+    </n-modal>
   </div>
 </template>
 
@@ -179,6 +204,7 @@ import {
   PostAddFilled,
   CheckCircleFilled,
   CancelRound,
+  AssignmentOutlined,
 } from '@vicons/material'
 import MangaRuleSchema from '@/assets/MangaRuleSchema.json'
 import ChapterRuleSchema from '@/assets/ChapterRuleSchema.json'
@@ -195,6 +221,8 @@ import {
   validateChapterRule,
   isValidPages,
 } from '../utils/validationHelpers'
+import { NIcon } from 'naive-ui'
+import { h } from 'vue'
 
 const resultJson = ref('')
 const dialog = useDialog()
@@ -208,6 +236,30 @@ const urlRule = reactive({
   url_manga_rule: '',
   url_chapter_rule: '',
 })
+const loadRuleModalVisible = ref(false)
+const listScrapeRuleDb = ref<ScrapingRule[]>([])
+const openLoadModal = async () => {
+  if (listScrapeRuleDb.value.length > 0) {
+    loadRuleModalVisible.value = true
+    return
+  }
+  listScrapeRuleDb.value = await DatabaseService.ListScrapingRules()
+  loadRuleModalVisible.value = true
+}
+
+const loadRuleToInput = (rule: ScrapingRule) => {
+  Object.assign(scrapingRuleInput, rule)
+  loadRuleModalVisible.value = false
+
+  // Manually trigger validation since editors might be inactive
+  if (rule.manga_rule_json) {
+    statusJson.manga_rule = validateMangaRule(rule.manga_rule_json).length === 0
+  }
+  if (rule.chapter_rule_json) {
+    statusJson.chapter_rule =
+      validateChapterRule(rule.chapter_rule_json).length === 0
+  }
+}
 
 const clickDownloadTest = async () => {
   console.log('clickDownloadTest')
