@@ -29,7 +29,7 @@
           <n-radio-group v-model:value="selectedSiteKey" name="radiogroup">
             <n-space>
               <n-radio
-                v-for="site in listScrapeRuleDb"
+                v-for="site in listScrapeRule"
                 :key="site.id"
                 :value="site.site_key"
                 :label="site.name"
@@ -118,6 +118,9 @@ const listScrapeRuleDb = ref<ScrapingRule[]>([])
 const loadListScrapeRuleDb = async () => {
   listScrapeRuleDb.value = await DatabaseService.ListScrapingRulesBasic()
 }
+const listScrapeRule = computed(() => {
+  return listScrapeRuleDb.value.filter(rule => rule.enabled === 1)
+})
 loadListScrapeRuleDb()
 
 const message = useMessage()
