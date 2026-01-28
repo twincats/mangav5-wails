@@ -106,7 +106,7 @@
         </div>
       </div>
       <div class="flex justify-end gap-2">
-        <n-button tertiary type="primary">
+        <n-button tertiary type="primary" @click="dialogSetConfig">
           <n-icon>
             <PlaylistAddFilled />
           </n-icon>
@@ -223,7 +223,8 @@ import {
   validateChapterRule,
   isValidPages,
 } from '../utils/validationHelpers'
-import { NIcon } from 'naive-ui'
+import { setMangaDirectory } from '../utils/configHelper'
+import { NIcon, NInput } from 'naive-ui'
 import { h } from 'vue'
 
 const resultJson = ref('')
@@ -359,6 +360,40 @@ const saveScrapingRules = async () => {
     console.log(error)
     message.error(`${error}`)
   }
+}
+
+const mangaDirectory = ref('')
+const getMangaDirectory = async () => {
+  try {
+    const config = await DatabaseService.GetConfig('manga_directory')
+    mangaDirectory.value = config?.Value || ''
+  } catch (error) {
+    console.log(error)
+  }
+}
+getMangaDirectory()
+const dialogSetConfig = () => {
+  const d = dialog.success({
+    title: 'Set Config Download Manga Directory',
+    content: () =>
+      h(NInput, {
+        value: mangaDirectory.value,
+        'onUpdate:value': (v: string) => (mangaDirectory.value = v),
+        placeholder: 'Manga Directory Path',
+        type: 'text',
+      }),
+    positiveText: 'Confirm',
+    onPositiveClick: () => {
+      d.loading = true
+      return new Promise(resolve => {
+        setMangaDirectory(mangaDirectory.value).then(() => {
+          d.loading = false
+          message.success('Manga Directory saved successfully')
+          resolve(true)
+        })
+      })
+    },
+  })
 }
 
 const statusDownload = ref(false)

@@ -1,125 +1,394 @@
 <template>
   <div>
-    <div>Settings view</div>
-    <n-space>
-      <n-button type="primary" @click="scrapeFull">Scrap</n-button>
-      <n-button type="info" @click="scrapeJsRender">Scrap JS Render</n-button>
-      <n-button type="primary" @click="$router.push('/')">Goto Home</n-button>
+    <div class="flex gap-2 items-center">
       <n-input-group>
-        <n-input v-model:value="url" />
-        <n-button tertiary type="primary" @click="scrapeRules"> GO </n-button>
+        <n-input v-model:value="downloadUrl" placeholder="Enter download URL" />
+        <n-button tertiary type="primary" @click="fetchScrapeManga">
+          GO
+        </n-button>
       </n-input-group>
-    </n-space>
-
-    <n-split
-      direction="horizontal"
-      class="h-[calc(100vh-190px)] mt-4"
-      :max="0.75"
-      :min="0.5"
+      <n-button type="primary" secondary @click="progressModal = true">
+        <template #icon>
+          <n-icon><CancelRound /></n-icon>
+        </template>
+      </n-button>
+      <n-button
+        type="primary"
+        secondary
+        :disabled="checkedRowKeysRef.length === 0"
+      >
+        <template #icon>
+          <n-icon><DownloadFilled /></n-icon>
+        </template>
+      </n-button>
+    </div>
+    <div class="bg-dark-400 rounded-md p-2 my-2">
+      <div class="text-sm font-medium">Select site rule:</div>
+      <div class="bg-dark-500 p-2 rounded-md mt-1 overflow-auto">
+        <div class="min-h-[52.72px] flex items-center">
+          <n-radio-group v-model:value="selectedSiteKey" name="radiogroup">
+            <n-space>
+              <n-radio
+                v-for="site in listScrapeRuleDb"
+                :key="site.id"
+                :value="site.site_key"
+                :label="site.name"
+              />
+            </n-space>
+          </n-radio-group>
+        </div>
+      </div>
+    </div>
+    <div class="bg-dark-400 rounded-md p-2 my-2">
+      manga : {{ mangaData?.title }}<br />
+      {{ checkedRowKeysRef }}
+    </div>
+    <div>
+      <n-data-table
+        :columns="columns"
+        :bordered="false"
+        :single-line="false"
+        :data="chapterData"
+        :row-key="rowKey"
+        :size="'small'"
+        :pagination="{
+          pageSize: 10,
+        }"
+        striped
+        v-model:checked-row-keys="checkedRowKeysRef"
+        :row-props="rowProps"
+      />
+    </div>
+    <!-- modal progress -->
+    <n-modal
+      v-model:show="progressModal"
+      :mask-closable="false"
+      preset="card"
+      class="w-[600px]"
+      title="Download Progress"
     >
-      <template #1>
-        <div :style="{ height: '100%' }">
-          <MonacoEditor
-            v-model="code"
-            language="json"
-            theme="vs-dark"
-            :jsonSchema="SiteRuleSchema"
-            :formatOnLoad="true"
+      <div class="w-full text-center mb-2">
+        <div class="mb-2" v-if="checkedRowKeysRef.length > 0">
+          Manga Chapter
+          <n-progress
+            type="line"
+            :percentage="progress.chapterPercentage"
+            indicator-placement="inside"
+            processing
+            :border-radius="4"
           />
+          {{ progress.indexChapter }} / {{ progress.totalChapter }}
         </div>
-      </template>
-      <template #2>
-        <div :style="{ height: '100%' }">
-          <MonacoEditor
-            v-model="resultJson"
-            language="json"
-            theme="vs-dark"
-            :formatOnLoad="true"
+        <div>
+          Chapter Pages
+          <n-progress
+            type="line"
+            status="success"
+            :percentage="progress.downloadPercentage"
+            indicator-placement="inside"
+            processing
+            :border-radius="4"
           />
+          {{ progress.indexPage }} / {{ progress.totalPages }}
         </div>
-      </template>
-    </n-split>
+      </div>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import MonacoEditor from '@/components/MonacoEditor.vue'
-import { BrowserService, ScraperService } from '../../bindings/mangav5/services'
-import * as SiteRuleSchemaModule from '@/assets/SiteRuleSchema.json'
+import { DownloadFilled, CancelRound } from '@vicons/material'
+import FlagIndonesia from '@/assets/icon/twemoji--flag-indonesia.svg'
+import FlagUK from '@/assets/icon/twemoji--flag-united-kingdom.svg'
+import {
+  DatabaseService,
+  ScraperService,
+  DownloadService,
+} from '../../bindings/mangav5/services'
+import { ScrapingRule } from '../../bindings/mangav5/internal/models'
+import { DownloadProgress } from '@/type/download'
+import { MangaData, ChapterData, ChapterPages } from '@/type/scrape'
+import { NButton, NIcon } from 'naive-ui'
+import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
+import { Window, Events } from '@wailsio/runtime'
+import { watchDebounced, useEventListener } from '@vueuse/core'
+import { getDownloadDir } from '@/utils/filePathHelper'
 
-const SiteRuleSchema =
-  (SiteRuleSchemaModule as any).default || SiteRuleSchemaModule
-console.log('Schema loaded:', SiteRuleSchema)
+const listScrapeRuleDb = ref<ScrapingRule[]>([])
+const loadListScrapeRuleDb = async () => {
+  listScrapeRuleDb.value = await DatabaseService.ListScrapingRulesBasic()
+}
+loadListScrapeRuleDb()
 
-const code = ref('')
-const resultJson = ref('')
-// Contoh scraping
-// async function scrape() {
-//   try {
-//     const result = await BrowserService.ScrapePage(
-//       'https://example.com',
-//       'h1', // Optional selector
-//     )
-//     console.log('Title:', result.title)
-//     console.log('Images found:', result.images.length)
-//   } catch (err) {
-//     console.error(err)
-//   }
-// }
+const message = useMessage()
+const selectedSiteKey = ref<string>('')
+const downloadUrl = ref<string>('')
 
-const dialog = useDialog()
-const scrapeJsRender = async () => {
+const mangaData = ref<MangaData | null>(null)
+const chapterData = computed<ChapterData[]>(() => {
+  return mangaData.value?.chapters || []
+})
+
+const wasMaximizedBefore = ref(false)
+Window.IsMaximised().then((isMax: boolean) => {
+  wasMaximizedBefore.value = isMax
+  if (!isMax) {
+    Window.Maximise()
+  }
+})
+
+const progressModal = ref(false)
+const progress = reactive({
+  downloadPercentage: 0,
+  chapterPercentage: 0,
+  indexPage: 0,
+  totalPages: 0,
+  indexChapter: 0,
+  totalChapter: 0,
+})
+
+const downloadOneChapter = async (chapterId: string) => {
   try {
-    const result = await BrowserService.ScrapePage(
-      'https://westmanga.me/comic/level-count-stop-kara-hajimaru-kamisama-teki-isekai-life-saikyou-status-ni-tensei-shita-node-suki-ni-ikimasu',
-      "div[data-slot='card-title'].break-words", // Selector spesifik untuk judul komik
+    // fetch rule data
+    const rule = await getScrapeRule(selectedSiteKey.value)
+    if (!rule) {
+      return
+    }
+    const chapterRule = JSON.parse(rule.chapter_rule_json)
+    // scrape chapter list images
+    const chapterImages = (await ScraperService.Scrape(
+      chapterRule,
+      chapterId,
+    )) as unknown as ChapterPages
+
+    const listImages = chapterImages.pages
+    const chapterInfo = findChapterByChapterId(chapterId)
+    const outputDir = await getDownloadDir(
+      mangaData.value?.title || 'untitled',
+      chapterInfo?.chapter || '000',
     )
-    dialog.success({
-      title: 'Success',
-      content: 'Berhasil TITLE = ' + result.content,
-    })
-    console.log('Result:', result)
-    console.log('Title:', result.title)
-    console.log('Images found:', result.images.length)
-  } catch (err) {
-    console.error(err)
+
+    progressModal.value = true
+    // download chapter images
+    await DownloadService.DownloadImages(listImages, outputDir, null)
+
+    message.success('Chapter downloaded successfully')
+  } catch (error) {
+    message.error('Failed to download chapter')
+    progressModal.value = false
+  }
+}
+// download progress event
+Events.On('downloadProgress', event => {
+  const data = event.data as DownloadProgress
+  progress.indexPage = data.index
+  progress.totalPages = data.total
+  if (data.total > 0) {
+    progress.downloadPercentage = Math.round((data.index / data.total) * 100)
+  } else {
+    progress.downloadPercentage = 0
+  }
+})
+
+const fetchScrapeManga = async () => {
+  if (!selectedSiteKey.value) {
+    message.error('Please select a site rule')
+    return
+  }
+  if (!downloadUrl.value) {
+    message.error('Please enter a download URL')
+    return
+  }
+  try {
+    const rule = await getScrapeRule(selectedSiteKey.value)
+    if (!rule) {
+      return
+    }
+    const mangaRule = JSON.parse(rule.manga_rule_json)
+    const result = (await ScraperService.Scrape(
+      mangaRule,
+      downloadUrl.value,
+    )) as unknown as MangaData
+    mangaData.value = result
+  } catch (error) {
+    message.error('Failed to scrape manga')
   }
 }
 
-const scrapeFull = async () => {
+const getScrapeRule = async (siteKey: string) => {
   try {
-    const result = await BrowserService.ScrapFull(
-      'https://westmanga.me/comic/level-count-stop-kara-hajimaru-kamisama-teki-isekai-life-saikyou-status-ni-tensei-shita-node-suki-ni-ikimasu',
-    )
-    dialog.success({
-      title: 'Success',
-      content: result,
-    })
-    console.log('Result:', result)
-  } catch (err) {
-    console.error(err)
+    return await DatabaseService.GetScrapingRule(siteKey)
+  } catch (error) {
+    message.error('Failed to get scrape rule')
+    return null
   }
 }
 
-const url = ref('')
-const scrapeRules = async () => {
-  try {
-    const rules = JSON.parse(code.value)
-    const result = await ScraperService.Scrape(rules, url.value)
-
-    resultJson.value = JSON.stringify(result, null, 2)
-
-    dialog.success({
-      title: 'Success',
-      content: 'Scraping finished',
-    })
-    console.log('Result:', result)
-  } catch (err) {
-    console.error(err)
-    dialog.error({
-      title: 'Error',
-      content: String(err),
-    })
+/* ======== TABLE FUNCTION ========== */
+const rowKey = (record: ChapterData) => record.chapter_id
+const checkedRowKeysRef = ref<DataTableRowKey[]>([])
+const rowProps = (row: ChapterData) => {
+  return {
+    style: 'cursor: pointer;',
+    onClick: (e: MouseEvent) => {
+      if (
+        (e.target as HTMLElement).closest('.n-checkbox') ||
+        (e.target as HTMLElement).closest('.n-button')
+      ) {
+        return
+      }
+      const key = rowKey(row)
+      const index = checkedRowKeysRef.value.indexOf(key)
+      if (index > -1) {
+        checkedRowKeysRef.value.splice(index, 1)
+      } else {
+        checkedRowKeysRef.value.push(key)
+      }
+    },
   }
+}
+function createColumns({
+  downloadChapter,
+}: {
+  downloadChapter: (rowData: ChapterData) => Promise<void> | void
+}): DataTableColumns<ChapterData> {
+  return [
+    {
+      type: 'selection',
+    },
+    {
+      title: 'Chapter ID',
+      key: 'chapter_id',
+      width: 120,
+      ellipsis: true,
+    },
+    {
+      title: 'Chapter',
+      key: 'chapter',
+      align: 'center',
+      width: 80,
+    },
+    {
+      title: 'Chapter Title',
+      key: 'chapter_title',
+      ellipsis: true,
+    },
+    {
+      title: 'Chapter Volume',
+      key: 'chapter_volume',
+      align: 'center',
+      width: 80,
+    },
+    {
+      title: 'Group Name',
+      key: 'group_name',
+      align: 'center',
+      ellipsis: true,
+    },
+    {
+      title: 'Language',
+      key: 'language',
+      align: 'center',
+      width: 80,
+      render(row) {
+        const iconStyle = { width: '1em', height: '1em', display: 'block' }
+        if (row.language === 'id') {
+          return h(
+            NIcon,
+            { size: '1.2em' },
+            {
+              default: () => h('img', { src: FlagIndonesia, style: iconStyle }),
+            },
+          )
+        }
+        if (row.language === 'en') {
+          return h(
+            NIcon,
+            { size: '1.2em' },
+            {
+              default: () => h('img', { src: FlagUK, style: iconStyle }),
+            },
+          )
+        }
+        return row.language
+      },
+    },
+    {
+      title: 'Release Time',
+      key: 'time',
+      align: 'center',
+      width: 120,
+      ellipsis: true,
+    },
+    {
+      title: 'Action',
+      key: 'actions',
+      align: 'center',
+      width: 100,
+      render(row) {
+        return h(
+          NButton,
+          {
+            size: 'small',
+            onClick: () => downloadChapter(row),
+            disabled: checkedRowKeysRef.value.length > 0,
+          },
+          { default: () => 'Download' },
+        )
+      },
+    },
+  ]
+}
+
+const columns = createColumns({
+  async downloadChapter(rowData: ChapterData) {
+    console.info(`chapter = ${rowData.chapter}`)
+    downloadOneChapter(rowData.chapter_id)
+  },
+})
+
+/* ======== WATCHER FUNCTION ========== */
+watchDebounced(
+  downloadUrl,
+  newVal => {
+    if (newVal) {
+      try {
+        const url = new URL(newVal)
+        console.info(`url.hostname = ${url.hostname}`)
+        const siteKey = listScrapeRuleDb.value.find(rule =>
+          JSON.parse(rule.domains_json).includes(url.hostname),
+        )?.site_key
+        if (siteKey) {
+          selectedSiteKey.value = siteKey
+        } else {
+          message.error('Failed to fetch manga')
+        }
+      } catch (error) {}
+    }
+  },
+  { debounce: 100 },
+)
+
+/* ======== ROUTER FUNCTION ========== */
+onBeforeRouteLeave((_to, _from, next) => {
+  if (!wasMaximizedBefore.value) {
+    Window.Restore()
+  }
+  next()
+})
+
+/* ======== HELPER FUNCTION ========== */
+useEventListener(document, 'paste', e => {
+  const clipboardData = e.clipboardData
+  if (clipboardData) {
+    const text = clipboardData.getData('text')
+    if (text) {
+      downloadUrl.value = text
+    }
+  }
+})
+
+const findChapterByChapterId = (chapterId: string) => {
+  return chapterData.value.find(chap => chap.chapter_id === chapterId)
 }
 </script>

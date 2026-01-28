@@ -106,12 +106,6 @@ func DownloadImagesAdaptive(
 				})
 			}
 
-			// adjust semaphore capacity
-			current := ctrl.Current()
-			for len(sem) > current {
-				<-sem // shrink concurrency
-			}
-
 		case <-ctx.Done():
 			return ctx.Err()
 		}

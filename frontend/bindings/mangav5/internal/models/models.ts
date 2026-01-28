@@ -130,8 +130,8 @@ export class Chapter {
 export class Config {
     "Key": string;
     "Value": string;
-    "CreatedAt": number;
-    "UpdatedAt": number;
+    "CreatedAt": string;
+    "UpdatedAt": string;
 
     /** Creates a new Config instance. */
     constructor($$source: Partial<Config> = {}) {
@@ -142,10 +142,10 @@ export class Config {
             this["Value"] = "";
         }
         if (!("CreatedAt" in $$source)) {
-            this["CreatedAt"] = 0;
+            this["CreatedAt"] = "";
         }
         if (!("UpdatedAt" in $$source)) {
-            this["UpdatedAt"] = 0;
+            this["UpdatedAt"] = "";
         }
 
         Object.assign(this, $$source);
