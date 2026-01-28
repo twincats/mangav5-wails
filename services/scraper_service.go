@@ -62,7 +62,7 @@ func (s *ScraperService) Scrape(rule SiteRule, overrideURL string) (map[string]i
 			if strings.Contains(targetURL, "?") {
 				targetURLWithoutQuery = strings.Split(targetURL, "?")[0]
 			}
-			
+
 			// Use the cleaner URL for subsequent ID extraction
 			targetURL = targetURLWithoutQuery
 		}
@@ -357,7 +357,14 @@ func (s *ScraperService) scrapeAPI(url string, rule SiteRule, params map[string]
 func (s *ScraperService) executeAPISteps(ctx map[string]interface{}, steps []APIStep) error {
 	for _, step := range steps {
 		// Process URL template if needed
-		stepURL := strings.TrimSpace(s.processTemplate(step.Request.URL, ctx))
+		stepURLRaw := s.processTemplate(step.Request.URL, ctx)
+		stepURL := ""
+		if str, ok := stepURLRaw.(string); ok {
+			stepURL = strings.TrimSpace(str)
+		} else {
+			// Should not happen for API steps URL template with ctx map
+			stepURL = fmt.Sprintf("%v", stepURLRaw)
+		}
 
 		// Check for unreplaced placeholders
 		if strings.Contains(stepURL, "{") && strings.Contains(stepURL, "}") {
@@ -464,6 +471,14 @@ func (s *ScraperService) extractFieldGeneric(source interface{}, field FieldRule
 					}
 				}
 
+				// If we are in a context map, and child type is CSS, and no From was specified
+				// We should try to use the default selection from context
+				if isCtx && child.From == "" && child.Type == "css" {
+					if sel, ok := ctx["__default_selection__"]; ok {
+						childSource = sel
+					}
+				}
+
 				if childSource != nil {
 					// Recursively extract
 					// Note: extractFieldGeneric expects 'source' to be what the type needs.
@@ -542,7 +557,16 @@ func (s *ScraperService) extractFieldGeneric(source interface{}, field FieldRule
 					// For a template type, if it produces multiple values, it returns []string (or []interface{})
 					// The previous logic returns ONE string if not explicit loop?
 					// Wait, if children are multiple, the template should probably generate multiple strings.
-					results = append(results, s.processTemplate(field.Template, itemData))
+
+					// processTemplate now returns interface{} (string or []string)
+					// Here we expect single string because we are iterating manually
+					res := s.processTemplate(field.Template, itemData)
+					if str, ok := res.(string); ok {
+						results = append(results, str)
+					} else {
+						// Should not happen if itemData is map
+						results = append(results, res)
+					}
 				}
 				return results
 			}
@@ -636,6 +660,23 @@ func (s *ScraperService) extractCSS(sel *goquery.Selection, rule FieldRule) inte
 	if rule.Multiple {
 		var items []interface{}
 		current.Each(func(i int, selection *goquery.Selection) {
+			// Filter Logic
+			if rule.Filter != "" {
+				match := selection.Is(rule.Filter) || selection.Find(rule.Filter).Length() > 0
+
+				if rule.FilterMode == "not" {
+					if match {
+						return // Skip this item
+					}
+				} else {
+					// Default: Keep only if it matches (FilterMode="has" or empty default implies filtering FOR something?)
+					// Usually if 'filter' is set, we want items that match.
+					if !match {
+						return // Skip this item
+					}
+				}
+			}
+
 			if len(rule.Children) > 0 {
 				items = append(items, s.extractFields(selection, rule.Children))
 			} else {
@@ -765,7 +806,22 @@ func (s *ScraperService) renderTemplate(tmplStr string, data interface{}) string
 	return buf.String()
 }
 
-func (s *ScraperService) processTemplate(tmplStr string, data interface{}) string {
+func (s *ScraperService) processTemplate(tmplStr string, data interface{}) interface{} {
+	// If data is array/slice, process template for each item
+	if arr, ok := data.([]interface{}); ok {
+		var results []string
+		for _, item := range arr {
+			if m, ok := item.(map[string]interface{}); ok {
+				results = append(results, s.simpleRender(tmplStr, m))
+			} else {
+				// Fallback for non-map items in array?
+				results = append(results, s.renderTemplate(tmplStr, item))
+			}
+		}
+		return results
+	}
+
+	// Single item processing
 	if m, ok := data.(map[string]interface{}); ok {
 		return s.simpleRender(tmplStr, m)
 	}

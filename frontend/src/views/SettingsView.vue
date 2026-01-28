@@ -352,8 +352,9 @@ const saveScrapingRules = async () => {
       title: 'Success',
       content: 'Scraping Rule saved successfully',
       positiveText: 'OK',
-      onPositiveClick: () => {
+      onPositiveClick: async () => {
         clearInput()
+        listScrapeRuleDb.value = await DatabaseService.ListScrapingRulesBasic()
       },
     })
   } catch (error) {

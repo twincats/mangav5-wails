@@ -3,6 +3,7 @@ export interface MangaData {
   title: string
   cover: string
   chapters: ChapterData[]
+  total_pages?: number
 }
 
 export interface ChapterData {
@@ -13,7 +14,6 @@ export interface ChapterData {
   group_name: string
   language: string
   time: string
-  total_pages?: number
 }
 
 export interface ChapterPages {
