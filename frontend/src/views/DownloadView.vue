@@ -16,6 +16,7 @@
         type="primary"
         secondary
         :disabled="checkedRowKeysRef.length === 0"
+        @click="downloadMultiple"
       >
         <template #icon>
           <n-icon><DownloadFilled /></n-icon>
@@ -39,9 +40,16 @@
         </div>
       </div>
     </div>
-    <div class="bg-dark-400 rounded-md p-2 my-2">
-      manga : {{ mangaData?.title }}<br />
-      {{ checkedRowKeysRef }}
+    <div class="bg-dark-400 rounded-md p-2 my-2 min-h-[100px]">
+      <n-h4 align-text>
+        <n-text type="primary">
+          {{ mangaData?.title }}
+        </n-text>
+      </n-h4>
+      <div v-if="selectedChapters.length > 0">
+        Download Chapters : {{ selectedChapters.length }} Chapter<br />
+        Selected Chapters : {{ selectedChapters.join(', ') }}
+      </div>
     </div>
     <div>
       <n-data-table
@@ -108,7 +116,7 @@ import {
 import { ScrapingRule } from '../../bindings/mangav5/internal/models'
 import { DownloadProgress } from '@/type/download'
 import { MangaData, ChapterData, ChapterPages } from '@/type/scrape'
-import { NButton, NIcon } from 'naive-ui'
+import { NButton, NIcon, NTag } from 'naive-ui'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
 import { Window, Events } from '@wailsio/runtime'
 import { watchDebounced, useEventListener } from '@vueuse/core'
@@ -175,7 +183,7 @@ const downloadOneChapter = async (chapterId: string) => {
     // download chapter images
     await DownloadService.DownloadImages(listImages, outputDir, null)
 
-    message.success('Chapter downloaded successfully')
+    message.success(`Chapter ${chapterInfo?.chapter} downloaded successfully`)
   } catch (error) {
     message.error('Failed to download chapter')
     progressModal.value = false
@@ -192,6 +200,28 @@ Events.On('downloadProgress', event => {
     progress.downloadPercentage = 0
   }
 })
+
+// download multiple chapters
+const downloadMultiple = async () => {
+  if (checkedRowKeysRef.value.length === 0) {
+    message.error('Please select at least one chapter')
+    return
+  }
+  progressModal.value = true
+  progress.indexChapter = 0
+  progress.totalChapter = checkedRowKeysRef.value.length
+  for (const key of checkedRowKeysRef.value) {
+    const chapterId = key as string
+    await downloadOneChapter(chapterId)
+    progress.indexChapter++
+    progress.chapterPercentage = Math.round(
+      (progress.indexChapter / progress.totalChapter) * 100,
+    )
+  }
+  setTimeout(() => {
+    progressModal.value = false
+  }, 2000)
+}
 
 const fetchScrapeManga = async () => {
   if (!selectedSiteKey.value) {
@@ -324,6 +354,27 @@ function createColumns({
       ellipsis: true,
     },
     {
+      title: 'Status',
+      key: 'status',
+      align: 'center',
+      width: 80,
+      ellipsis: true,
+      render(row) {
+        if (row.language === 'id') {
+          return h(
+            NTag,
+            { type: 'success', size: 'small' },
+            { default: () => 'YES' },
+          )
+        }
+        return h(
+          NTag,
+          { type: 'error', size: 'small' },
+          { default: () => 'No' },
+        )
+      },
+    },
+    {
       title: 'Action',
       key: 'actions',
       align: 'center',
@@ -350,6 +401,11 @@ const columns = createColumns({
   },
 })
 
+const selectedChapters = computed(() => {
+  return checkedRowKeysRef.value
+    .map(key => findChapterByChapterId(key.toString())!.chapter)
+    .sort((a, b) => Number(a) - Number(b))
+})
 /* ======== WATCHER FUNCTION ========== */
 watchDebounced(
   downloadUrl,

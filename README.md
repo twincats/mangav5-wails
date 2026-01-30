@@ -1,59 +1,72 @@
-# Welcome to Your New Wails3 Project!
+# Mangav5 (Wails v3)
 
-Congratulations on generating your Wails3 application! This README will guide you through the next steps to get your project up and running.
+**Mangav5** is a powerful manga downloader and manager built using [Wails v3](https://v3.wails.io/), combining the performance of Go with a modern Vue 3 frontend.
 
-## Getting Started
+## 🚀 Features
 
-1. Navigate to your project directory in the terminal.
+*   **Customizable Scraping Engine**: Define your own scraping rules using JSON. Supports CSS selectors, Regex extraction, and template processing.
+*   **Manga Management**: Track your favorite manga, chapters, and read status locally using SQLite.
+*   **High-Performance Downloader**: Concurrent downloading of manga chapters and images.
+*   **Modern UI**: Built with **Vue 3**, **TypeScript**, **Naive UI**, and **UnoCSS** for a responsive and clean user experience.
+*   **Built-in Editor**: Integrated **Monaco Editor** for easy creation and modification of scraping rules directly within the app.
+*   **Browser Integration**: Includes a browser service to handle complex sites and dynamic content.
 
-2. To run your application in development mode, use the following command:
+## 🛠️ Tech Stack
 
-   ```
-   wails3 dev
-   ```
+*   **Backend**: Go (Golang), Wails v3
+*   **Database**: SQLite (with auto-migrations)
+*   **Frontend**: Vue 3, TypeScript, Vite
+*   **UI Library**: Naive UI, UnoCSS
+*   **Editor**: Monaco Editor
 
-   This will start your application and enable hot-reloading for both frontend and backend changes.
+## 📦 Getting Started
 
-3. To build your application for production, use:
+### Prerequisites
 
-   ```
-   wails3 build
-   ```
+*   **Go** (Latest version recommended)
+*   **Node.js** & **npm/pnpm/yarn**
+*   **Wails v3 CLI**
 
-   This will create a production-ready executable in the `build` directory.
+### Installation
 
-## Exploring Wails3 Features
+1.  Clone the repository:
+    ```bash
+    git clone <repository-url>
+    cd mangav5-wails3
+    ```
 
-Now that you have your project set up, it's time to explore the features that Wails3 offers:
+2.  Install frontend dependencies:
+    ```bash
+    cd frontend
+    npm install
+    # or pnpm install / yarn install
+    ```
 
-1. **Check out the examples**: The best way to learn is by example. Visit the `examples` directory in the `v3/examples` directory to see various sample applications.
+3.  Run in Development Mode:
+    ```bash
+    wails3 dev
+    ```
+    This will start the application with hot-reloading enabled for both Go and Vue changes.
 
-2. **Run an example**: To run any of the examples, navigate to the example's directory and use:
+### Building for Production
 
-   ```
-   go run .
-   ```
+To create a production-ready executable:
 
-   Note: Some examples may be under development during the alpha phase.
+```bash
+wails3 build
+```
+The output binary will be located in the `build/` directory.
 
-3. **Explore the documentation**: Visit the [Wails3 documentation](https://v3.wails.io/) for in-depth guides and API references.
+## 📂 Project Structure
 
-4. **Join the community**: Have questions or want to share your progress? Join the [Wails Discord](https://discord.gg/JDdSxwjhGf) or visit the [Wails discussions on GitHub](https://github.com/wailsapp/wails/discussions).
+*   `main.go`: Application entry point and service registration.
+*   `services/`: Core business logic (Scraper, Downloader, Database, Browser).
+*   `internal/`: Internal packages for database models (`models/`) and repositories (`repo/`).
+*   `frontend/`: Vue 3 application source code.
+    *   `src/views/`: Application pages (Download, Library, etc.).
+    *   `src/components/`: Reusable UI components.
+*   `wails.json`: Wails project configuration.
 
-## Project Structure
+## 📝 License
 
-Take a moment to familiarize yourself with your project structure:
-
-- `frontend/`: Contains your frontend code (HTML, CSS, JavaScript/TypeScript)
-- `main.go`: The entry point of your Go backend
-- `app.go`: Define your application structure and methods here
-- `wails.json`: Configuration file for your Wails project
-
-## Next Steps
-
-1. Modify the frontend in the `frontend/` directory to create your desired UI.
-2. Add backend functionality in `main.go`.
-3. Use `wails3 dev` to see your changes in real-time.
-4. When ready, build your application with `wails3 build`.
-
-Happy coding with Wails3! If you encounter any issues or have questions, don't hesitate to consult the documentation or reach out to the Wails community.
+[Your License Here]

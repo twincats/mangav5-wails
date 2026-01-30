@@ -21,7 +21,7 @@ func GetAndMigrateDatabasePath() (string, error) {
 		return "", fmt.Errorf("failed to create application directory: %w", err)
 	}
 
-	dbPath := filepath.Join(appDir, "manga.db")
+	dbPath := filepath.Join(appDir, "mangav5.db")
 	log.Println("Database path:", dbPath)
 
 	// Migration: If manga.db exists in current directory but not in AppData, copy it.
