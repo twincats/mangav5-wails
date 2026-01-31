@@ -65,6 +65,7 @@ func main() {
 	browserService := services.NewBrowserService()
 	defer browserService.Cleanup()
 	scraperService := services.NewScraperService(browserService)
+	fileService := services.NewFileService(databaseService)
 
 	app := application.New(application.Options{
 		Name:        "mangav5-wails3",
@@ -74,6 +75,9 @@ func main() {
 			application.NewService(scraperService),
 			application.NewService(services.NewDownloadService()),
 			application.NewService(databaseService),
+			application.NewServiceWithOptions(fileService, application.ServiceOptions{
+				Route: "/filemanga",
+			}),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

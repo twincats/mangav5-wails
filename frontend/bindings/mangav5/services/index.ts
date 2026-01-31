@@ -4,11 +4,13 @@
 import * as BrowserService from "./browserservice.js";
 import * as DatabaseService from "./databaseservice.js";
 import * as DownloadService from "./downloadservice.js";
+import * as FileService from "./fileservice.js";
 import * as ScraperService from "./scraperservice.js";
 export {
     BrowserService,
     DatabaseService,
     DownloadService,
+    FileService,
     ScraperService
 };
 

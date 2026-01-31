@@ -6,6 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/go-resty/resty/v2 v2.17.1
 	github.com/go-rod/rod v0.116.2
+	github.com/klauspost/compress v1.18.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.60
 	modernc.org/sqlite v1.36.0
