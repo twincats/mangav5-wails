@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"io"
 	"io/fs"
 	"mime"
@@ -157,23 +158,28 @@ func (s *FileService) ConvertToCbz(dirPath string) error {
 }
 
 // DeleteImages deletes specific image files from a directory or a cbz/zip archive.
-// targetPath: path to the directory or the archive file.
+// It prioritizes: Directory > .cbz > .zip
+// relativePath: path relative to the manga directory (e.g. "MangaTitle/Chapter1")
 // filenames: list of filenames (basenames) to delete.
-func (s *FileService) DeleteImages(targetPath string, filenames []string) error {
-	info, err := os.Stat(targetPath)
+func (s *FileService) DeleteImages(relativePath string, filenames []string) error {
+	mangaDir, err := s.GetMangaDir()
 	if err != nil {
 		return err
 	}
 
-	if info.IsDir() {
+	fullPath := filepath.Join(mangaDir, relativePath)
+
+	// 1. Check if it's a directory
+	info, err := os.Stat(fullPath)
+	if err == nil && info.IsDir() {
 		// Target is a directory
 		for _, fname := range filenames {
 			// Basic security check: ensure filename doesn't have path separators
 			if strings.Contains(fname, string(os.PathSeparator)) || strings.Contains(fname, "/") {
 				continue
 			}
-			fullPath := filepath.Join(targetPath, fname)
-			if err := os.Remove(fullPath); err != nil {
+			fPath := filepath.Join(fullPath, fname)
+			if err := os.Remove(fPath); err != nil {
 				// We might want to continue deleting other files even if one fails,
 				// or return the error. For now, returning error is safer.
 				return err
@@ -182,22 +188,37 @@ func (s *FileService) DeleteImages(targetPath string, filenames []string) error 
 		return nil
 	}
 
-	// Target is a file (assume archive)
-	// We should probably check extension, but zipper.DeleteFileFromArchive handles zip/cbz.
-	return zipper.DeleteFileFromArchive(targetPath, filenames)
+	// 2. Check if .cbz exists
+	cbzPath := fullPath + ".cbz"
+	if _, err := os.Stat(cbzPath); err == nil {
+		return zipper.DeleteFileFromArchive(cbzPath, filenames)
+	}
+
+	// 3. Check if .zip exists
+	zipPath := fullPath + ".zip"
+	if _, err := os.Stat(zipPath); err == nil {
+		return zipper.DeleteFileFromArchive(zipPath, filenames)
+	}
+
+	return errors.New("target path not found (directory, .cbz, or .zip): " + relativePath)
 }
 
 // GetImageList returns a list of image files in a directory or cbz/zip archive.
-// Returns filenames sorted alphabetically.
-func (s *FileService) GetImageList(targetPath string) ([]string, error) {
-	info, err := os.Stat(targetPath)
+// It prioritizes: Directory > .cbz > .zip
+// relativePath: path relative to the manga directory (e.g. "MangaTitle/Chapter1")
+func (s *FileService) GetImageList(relativePath string) ([]string, error) {
+	mangaDir, err := s.GetMangaDir()
 	if err != nil {
 		return nil, err
 	}
 
-	if info.IsDir() {
+	fullPath := filepath.Join(mangaDir, relativePath)
+
+	// 1. Check if it's a directory
+	info, err := os.Stat(fullPath)
+	if err == nil && info.IsDir() {
 		// Read directory
-		entries, err := os.ReadDir(targetPath)
+		entries, err := os.ReadDir(fullPath)
 		if err != nil {
 			return nil, err
 		}
@@ -214,8 +235,20 @@ func (s *FileService) GetImageList(targetPath string) ([]string, error) {
 		return images, nil
 	}
 
-	// Target is a file (assume archive)
-	return zipper.ListImages(targetPath)
+	// 2. Check if .cbz exists
+	cbzPath := fullPath + ".cbz"
+	if _, err := os.Stat(cbzPath); err == nil {
+		return zipper.ListImages(cbzPath)
+	}
+
+	// 3. Check if .zip exists
+	zipPath := fullPath + ".zip"
+	if _, err := os.Stat(zipPath); err == nil {
+		return zipper.ListImages(zipPath)
+	}
+
+	// Return empty array if nothing found (as requested)
+	return []string{}, nil
 }
 
 func isImageFile(filename string) bool {

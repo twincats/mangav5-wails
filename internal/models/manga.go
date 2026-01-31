@@ -21,3 +21,17 @@ type MangaStatus struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
 }
+
+type MangaWithAlt struct {
+	Manga
+	AlternativeTitles []AlternativeTitle `json:"alternative_titles"`
+}
+
+type LatestManga struct {
+	MangaID       int64   `json:"manga_id"`
+	MainTitle     string  `json:"main_title"`
+	StatusName    string  `json:"status_name"`
+	ChapterID     int64   `json:"chapter_id"`
+	ChapterNumber float64 `json:"chapter_number"`
+	DownloadTime  string  `json:"download_time"`
+}

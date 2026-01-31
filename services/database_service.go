@@ -82,6 +82,24 @@ func (s *DatabaseService) GetAllMangaStatuses(ctx context.Context) ([]models.Man
 	return s.mangaRepo.GetAllStatuses(ctx)
 }
 
+// GetMangaWithAlternativeTitles returns a manga with its alternative titles
+func (s *DatabaseService) GetMangaWithAlternativeTitles(ctx context.Context, id int64) (*models.MangaWithAlt, error) {
+	return s.mangaRepo.GetMangaWithAlternativeTitles(ctx, id)
+}
+
+// GetLatestManga returns the latest updated manga
+func (s *DatabaseService) GetLatestManga(ctx context.Context, limit int) ([]models.LatestManga, error) {
+	return s.mangaRepo.GetLatestManga(ctx, limit)
+}
+
+// ScanDirectoryForManga scans the given directory for manga and chapters
+func (s *DatabaseService) ScanDirectoryForManga(ctx context.Context, mangasDir string) error {
+	if strings.TrimSpace(mangasDir) == "" {
+		return errors.New("directory path cannot be empty")
+	}
+	return s.mangaRepo.ScanDirectoryForManga(ctx, mangasDir)
+}
+
 // =====================
 // Chapter Methods
 // =====================

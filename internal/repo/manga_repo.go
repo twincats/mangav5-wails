@@ -4,8 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
 	"mangav5/internal/models"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type MangaRepo struct {
@@ -199,4 +207,242 @@ func (r *MangaRepo) Delete(ctx context.Context, id int64) error {
 		DELETE FROM manga WHERE id = ?
 	`, id)
 	return err
+}
+
+// GetMangaWithAlternativeTitles returns a manga with its alternative titles
+func (r *MangaRepo) GetMangaWithAlternativeTitles(ctx context.Context, id int64) (*models.MangaWithAlt, error) {
+	manga, err := r.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if manga == nil {
+		return nil, nil
+	}
+
+	altTitles, err := r.GetAlternativeTitles(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.MangaWithAlt{
+		Manga:             *manga,
+		AlternativeTitles: altTitles,
+	}, nil
+}
+
+// GetLatestManga returns the latest updated manga with their latest chapter
+func (r *MangaRepo) GetLatestManga(ctx context.Context, limit int) ([]models.LatestManga, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	query := `
+		SELECT
+		  m.manga_id        AS manga_id,
+		  m.main_title      AS main_title,
+		  ms.status_name    AS status_name,
+		  c.chapter_id      AS chapter_id,
+		  c.chapter_number  AS chapter_number,
+		  c.created_at      AS download_time
+		FROM manga AS m
+		INNER JOIN chapters AS c
+		  ON m.manga_id = c.manga_id
+		INNER JOIN manga_status AS ms
+		  ON m.status_id = ms.status_id
+		WHERE
+		  CAST(c.chapter_number AS REAL) = (
+		    SELECT MAX(CAST(c2.chapter_number AS REAL))
+		    FROM chapters AS c2
+		    WHERE c2.manga_id = m.manga_id
+		  )
+		ORDER BY
+		  c.created_at DESC,
+		  m.main_title
+		LIMIT ?;
+	`
+
+	rows, err := r.DB.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []models.LatestManga
+	for rows.Next() {
+		var lm models.LatestManga
+		if err := rows.Scan(
+			&lm.MangaID,
+			&lm.MainTitle,
+			&lm.StatusName,
+			&lm.ChapterID,
+			&lm.ChapterNumber,
+			&lm.DownloadTime,
+		); err != nil {
+			return nil, err
+		}
+		results = append(results, lm)
+	}
+
+	return results, nil
+}
+
+// ScanDirectoryForManga scans the given directory for manga and chapters
+func (r *MangaRepo) ScanDirectoryForManga(ctx context.Context, mangasDir string) error {
+	app := application.Get()
+	entries, err := os.ReadDir(mangasDir)
+	if err != nil {
+		return err
+	}
+
+	// Count total manga directories for progress tracking
+	totalManga := 0
+	for _, e := range entries {
+		if e.IsDir() {
+			totalManga++
+		}
+	}
+
+	chapterRepo := NewChapterRepo(r.DB)
+	mangaIndex := 0
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		mangaIndex++
+
+		mangaTitle := entry.Name()
+		mangaPath := filepath.Join(mangasDir, mangaTitle)
+
+		// Check if manga exists
+		var mangaID int64
+		err := r.DB.QueryRowContext(ctx, "SELECT manga_id FROM manga WHERE main_title = ?", mangaTitle).Scan(&mangaID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				// Insert new manga
+				newManga := &models.Manga{
+					MainTitle:   mangaTitle,
+					Description: fmt.Sprintf("Manga: %s", mangaTitle),
+					Year:        time.Now().Year(),
+					StatusID:    1, // Ongoing
+				}
+				mangaID, err = r.Insert(ctx, newManga)
+				if err != nil {
+					return fmt.Errorf("failed to insert manga %s: %w", mangaTitle, err)
+				}
+			} else {
+				return fmt.Errorf("failed to query manga %s: %w", mangaTitle, err)
+			}
+		}
+
+		// Scan for chapters
+		subEntries, err := os.ReadDir(mangaPath)
+		if err != nil {
+			// Log error but continue with other mangas? Or return?
+			// For now, let's return error to be safe
+			return fmt.Errorf("failed to read directory %s: %w", mangaPath, err)
+		}
+
+		// Get existing chapters to avoid duplicates
+		existingChapters, err := chapterRepo.GetByMangaID(ctx, mangaID)
+		if err != nil {
+			return fmt.Errorf("failed to get existing chapters for %s: %w", mangaTitle, err)
+		}
+		existingMap := make(map[float64]bool)
+		for _, c := range existingChapters {
+			existingMap[c.ChapterNumber] = true
+		}
+
+		var newChapters []models.Chapter
+		for _, subEntry := range subEntries {
+			name := subEntry.Name()
+
+			// Determine if it's a chapter (dir or zip/cbz)
+			isCompressed := 0
+			ext := strings.ToLower(filepath.Ext(name))
+			isArchive := ext == ".zip" || ext == ".cbz"
+
+			if !subEntry.IsDir() && !isArchive {
+				continue
+			}
+
+			if isArchive {
+				isCompressed = 1
+			}
+
+			// Parse chapter number
+			baseName := name
+			if isArchive {
+				baseName = strings.TrimSuffix(name, ext)
+			}
+
+			// Try parsing number
+			chapterNum, err := parseChapterNumber(baseName)
+			if err != nil {
+				// Skip if not a valid chapter name
+				continue
+			}
+
+			if existingMap[chapterNum] {
+				continue
+			}
+
+			// Add to new chapters
+			now := time.Now()
+			newChapters = append(newChapters, models.Chapter{
+				MangaID:         mangaID,
+				ChapterNumber:   chapterNum,
+				ChapterTitle:    fmt.Sprintf("Chapter %g", chapterNum),
+				Volume:          0,
+				TranslatorGroup: "Unknown",
+				Language:        "en",
+				ReleaseTimeTS:   now.Unix(),
+				ReleaseTimeRaw:  now.Format("2006-01-02 15:04:05"),
+				StatusRead:      0,
+				Path:            filepath.ToSlash(filepath.Join(mangaTitle, name)), // Use forward slashes for portability
+				IsCompressed:    isCompressed,
+				Status:          "valid",
+			})
+
+			// Mark as existing in local map to handle duplicate files (e.g. folder and zip for same chapter)
+			existingMap[chapterNum] = true
+		}
+
+		if len(newChapters) > 0 {
+			if err := chapterRepo.BatchInsert(ctx, newChapters); err != nil {
+				return fmt.Errorf("failed to batch insert chapters for %s: %w", mangaTitle, err)
+			}
+			// Emit event when chapter batch is finished
+			if app != nil {
+				app.Event.Emit("scanProgress", map[string]any{
+					"mainTitle":     mangaTitle,
+					"indexManga":    mangaIndex,
+					"totalManga":    totalManga,
+					"totalChapters": len(newChapters),
+				})
+			}
+		}
+	}
+
+	return nil
+}
+
+func parseChapterNumber(name string) (float64, error) {
+	// Try direct parse
+	if val, err := strconv.ParseFloat(name, 64); err == nil {
+		return val, nil
+	}
+
+	// Try removing "Chapter " prefix (case insensitive)
+	lowerName := strings.ToLower(name)
+	if strings.HasPrefix(lowerName, "chapter") {
+		clean := strings.TrimSpace(strings.TrimPrefix(lowerName, "chapter"))
+		// Remove leading/trailing special chars just in case "Chapter - 10"
+		clean = strings.Trim(clean, " -_")
+		if val, err := strconv.ParseFloat(clean, 64); err == nil {
+			return val, nil
+		}
+	}
+
+	return 0, errors.New("invalid chapter number format")
 }
