@@ -4,8 +4,6 @@ import type { MenuOption } from 'naive-ui'
 import type { Component } from 'vue'
 import {
   BookFilled as BookIcon,
-  PersonAddAltRound as PersonIcon,
-  WineBarRound as WineIcon,
   HomeFilled,
   SettingsFilled,
   DownloadFilled,
@@ -18,76 +16,15 @@ function renderIcon(icon: Component) {
 }
 const menuOptions: MenuOption[] = [
   {
-    label: 'Hear the Wind Sing',
-    key: 'hear-the-wind-sing',
+    label: 'Chapter',
+    key: 'chapter',
     icon: renderIcon(BookIcon),
   },
   {
-    label: 'Pinball 1973',
-    key: 'pinball-1973',
-    icon: renderIcon(BookIcon),
-    disabled: true,
-    children: [
-      {
-        label: 'Rat',
-        key: 'rat',
-      },
-    ],
-  },
-  {
-    label: 'A Wild Sheep Chase',
-    key: 'a-wild-sheep-chase',
+    label: 'Manga Alternative',
+    key: 'manga-alternative',
     disabled: true,
     icon: renderIcon(BookIcon),
-  },
-  {
-    label: 'Dance Dance Dance',
-    key: 'Dance Dance Dance',
-    icon: renderIcon(BookIcon),
-    children: [
-      {
-        type: 'group',
-        label: 'People',
-        key: 'people',
-        children: [
-          {
-            label: 'Narrator',
-            key: 'narrator',
-            icon: renderIcon(PersonIcon),
-          },
-          {
-            label: 'Sheep Man',
-            key: 'sheep-man',
-            icon: renderIcon(PersonIcon),
-          },
-        ],
-      },
-      {
-        label: 'Beverage',
-        key: 'beverage',
-        icon: renderIcon(WineIcon),
-        children: [
-          {
-            label: 'Whisky',
-            key: 'whisky',
-          },
-        ],
-      },
-      {
-        label: 'Food',
-        key: 'food',
-        children: [
-          {
-            label: 'Sandwich',
-            key: 'sandwich',
-          },
-        ],
-      },
-      {
-        label: 'The past increases. The future recedes.',
-        key: 'the-past-increases-the-future-recedes',
-      },
-    ],
   },
 ]
 
@@ -166,7 +103,9 @@ const collapsed = ref(true)
                   >
                     <router-view></router-view>
                   </n-layout-content>
-                  <n-layout-footer bordered> Chengfu Road </n-layout-footer>
+                  <n-layout-footer bordered>
+                    <div class="px-5">Mangav5 - All in one Manga manager</div>
+                  </n-layout-footer>
                 </n-layout>
               </n-layout>
             </n-space>

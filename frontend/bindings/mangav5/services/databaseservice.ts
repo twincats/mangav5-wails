@@ -94,40 +94,65 @@ export function GetConfigValue(key: string): $CancellablePromise<string> {
 }
 
 /**
+ * GetLatestManga returns the latest updated manga
+ */
+export function GetLatestManga(limit: number): $CancellablePromise<models$0.LatestManga[]> {
+    return $Call.ByID(2834965160, limit).then(($result: any) => {
+        return $$createType10($result);
+    });
+}
+
+/**
  * GetManga retrieves a manga by its ID
  */
 export function GetManga(id: number): $CancellablePromise<models$0.Manga | null> {
     return $Call.ByID(3262083485, id).then(($result: any) => {
-        return $$createType10($result);
+        return $$createType12($result);
+    });
+}
+
+/**
+ * GetMangaWithAlternativeTitles returns a manga with its alternative titles
+ */
+export function GetMangaWithAlternativeTitles(id: number): $CancellablePromise<models$0.MangaWithAlt | null> {
+    return $Call.ByID(2965412675, id).then(($result: any) => {
+        return $$createType14($result);
     });
 }
 
 export function GetScrapingRule(siteKey: string): $CancellablePromise<models$0.ScrapingRule | null> {
     return $Call.ByID(2300776374, siteKey).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType16($result);
     });
 }
 
 export function ListManga(limit: number, offset: number): $CancellablePromise<models$0.Manga[]> {
     return $Call.ByID(3312694067, limit, offset).then(($result: any) => {
-        return $$createType13($result);
+        return $$createType17($result);
     });
 }
 
 export function ListScrapingRules(): $CancellablePromise<models$0.ScrapingRule[]> {
     return $Call.ByID(2931394105).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType18($result);
     });
 }
 
 export function ListScrapingRulesBasic(): $CancellablePromise<models$0.ScrapingRule[]> {
     return $Call.ByID(4162381753).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType18($result);
     });
 }
 
 export function SaveScrapingRule(rule: models$0.ScrapingRule): $CancellablePromise<void> {
     return $Call.ByID(1443302969, rule);
+}
+
+/**
+ * ScanDirectoryForManga scans the given directory for manga and chapters
+ */
+export function ScanDirectoryForManga(mangasDir: string): $CancellablePromise<void> {
+    return $Call.ByID(1101106334, mangasDir);
 }
 
 /**
@@ -155,9 +180,13 @@ const $$createType5 = $Create.Nullable($$createType4);
 const $$createType6 = $Create.Array($$createType4);
 const $$createType7 = models$0.Config.createFrom;
 const $$createType8 = $Create.Nullable($$createType7);
-const $$createType9 = models$0.Manga.createFrom;
-const $$createType10 = $Create.Nullable($$createType9);
-const $$createType11 = models$0.ScrapingRule.createFrom;
+const $$createType9 = models$0.LatestManga.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = models$0.Manga.createFrom;
 const $$createType12 = $Create.Nullable($$createType11);
-const $$createType13 = $Create.Array($$createType9);
-const $$createType14 = $Create.Array($$createType11);
+const $$createType13 = models$0.MangaWithAlt.createFrom;
+const $$createType14 = $Create.Nullable($$createType13);
+const $$createType15 = models$0.ScrapingRule.createFrom;
+const $$createType16 = $Create.Nullable($$createType15);
+const $$createType17 = $Create.Array($$createType11);
+const $$createType18 = $Create.Array($$createType15);

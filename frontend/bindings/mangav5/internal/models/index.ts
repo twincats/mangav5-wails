@@ -5,7 +5,9 @@ export {
     AlternativeTitle,
     Chapter,
     Config,
+    LatestManga,
     Manga,
     MangaStatus,
+    MangaWithAlt,
     ScrapingRule
 } from "./models.js";

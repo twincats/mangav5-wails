@@ -23,6 +23,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/chapters/:mangaId',
+    name: 'chapters',
+    component: () => import('../views/HomeView.vue'),
+  },
+  {
+    path: '/read/:chapterId',
+    name: 'read',
+    component: () => import('../views/Reader.vue'),
+  },
+  {
     path: '/download',
     name: 'download',
     component: () => import('../views/DownloadView.vue'),

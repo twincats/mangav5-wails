@@ -160,6 +160,47 @@ export class Config {
     }
 }
 
+export class LatestManga {
+    "manga_id": number;
+    "main_title": string;
+    "status_name": string;
+    "chapter_id": number;
+    "chapter_number": number;
+    "download_time": string;
+
+    /** Creates a new LatestManga instance. */
+    constructor($$source: Partial<LatestManga> = {}) {
+        if (!("manga_id" in $$source)) {
+            this["manga_id"] = 0;
+        }
+        if (!("main_title" in $$source)) {
+            this["main_title"] = "";
+        }
+        if (!("status_name" in $$source)) {
+            this["status_name"] = "";
+        }
+        if (!("chapter_id" in $$source)) {
+            this["chapter_id"] = 0;
+        }
+        if (!("chapter_number" in $$source)) {
+            this["chapter_number"] = 0;
+        }
+        if (!("download_time" in $$source)) {
+            this["download_time"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LatestManga instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LatestManga {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new LatestManga($$parsedSource as Partial<LatestManga>);
+    }
+}
+
 export class Manga {
     "id": number;
     "main_title": string;
@@ -230,6 +271,59 @@ export class MangaStatus {
     }
 }
 
+export class MangaWithAlt {
+    "id": number;
+    "main_title": string;
+    "description": string;
+    "year": number;
+    "status_id": number;
+    "created_at": string;
+    "updated_at": string;
+    "alternative_titles": AlternativeTitle[];
+
+    /** Creates a new MangaWithAlt instance. */
+    constructor($$source: Partial<MangaWithAlt> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("main_title" in $$source)) {
+            this["main_title"] = "";
+        }
+        if (!("description" in $$source)) {
+            this["description"] = "";
+        }
+        if (!("year" in $$source)) {
+            this["year"] = 0;
+        }
+        if (!("status_id" in $$source)) {
+            this["status_id"] = 0;
+        }
+        if (!("created_at" in $$source)) {
+            this["created_at"] = "";
+        }
+        if (!("updated_at" in $$source)) {
+            this["updated_at"] = "";
+        }
+        if (!("alternative_titles" in $$source)) {
+            this["alternative_titles"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MangaWithAlt instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MangaWithAlt {
+        const $$createField7_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("alternative_titles" in $$parsedSource) {
+            $$parsedSource["alternative_titles"] = $$createField7_0($$parsedSource["alternative_titles"]);
+        }
+        return new MangaWithAlt($$parsedSource as Partial<MangaWithAlt>);
+    }
+}
+
 export class ScrapingRule {
     "id": number;
     "site_key": string;
@@ -282,3 +376,7 @@ export class ScrapingRule {
         return new ScrapingRule($$parsedSource as Partial<ScrapingRule>);
     }
 }
+
+// Private type creation functions
+const $$createType0 = AlternativeTitle.createFrom;
+const $$createType1 = $Create.Array($$createType0);
