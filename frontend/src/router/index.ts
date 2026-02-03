@@ -25,7 +25,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/chapters/:mangaId',
     name: 'chapters',
-    component: () => import('../views/HomeView.vue'),
+    component: () => import('../views/ChapterView.vue'),
   },
   {
     path: '/read/:chapterId',
