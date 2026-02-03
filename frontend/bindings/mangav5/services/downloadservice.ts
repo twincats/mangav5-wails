@@ -15,6 +15,13 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
+ * DownloadImage downloads a single image to the specified output directory
+ */
+export function DownloadImage(url: string, outputDir: string, baseName: string, options: $models.DownloadOptions | null): $CancellablePromise<void> {
+    return $Call.ByID(1974161193, url, outputDir, baseName, options);
+}
+
+/**
  * DownloadImages downloads a list of images to the specified output directory
  * It uses an adaptive downloader engine to manage concurrency
  */

@@ -113,14 +113,22 @@ import {
   ScraperService,
   DownloadService,
 } from '../../bindings/mangav5/services'
-import { ScrapingRule } from '../../bindings/mangav5/internal/models'
+import {
+  ScrapingRule,
+  Manga,
+  Chapter,
+} from '../../bindings/mangav5/internal/models'
 import { DownloadProgress } from '@/type/download'
 import { MangaData, ChapterData, ChapterPages } from '@/type/scrape'
 import { NButton, NIcon, NTag } from 'naive-ui'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
 import { Window, Events } from '@wailsio/runtime'
 import { watchDebounced, useEventListener } from '@vueuse/core'
-import { getDownloadDir } from '@/utils/filePathHelper'
+import {
+  getDownloadDir,
+  getDownloadMangaDir,
+  safeWindowsDirectoryName,
+} from '@/utils/filePathHelper'
 
 const listScrapeRuleDb = ref<ScrapingRule[]>([])
 const loadListScrapeRuleDb = async () => {
@@ -158,6 +166,7 @@ const progress = reactive({
   totalChapter: 0,
 })
 
+const mangaIdDb = ref<number>(0)
 const downloadOneChapter = async (chapterId: string) => {
   try {
     // fetch rule data
@@ -178,10 +187,66 @@ const downloadOneChapter = async (chapterId: string) => {
       mangaData.value?.title || 'untitled',
       chapterInfo?.chapter || '000',
     )
+    const chapterPath = `${safeWindowsDirectoryName(mangaData.value?.title || 'untitled')}/${chapterInfo?.chapter || '000'}`
 
     progressModal.value = true
     // download chapter images
     await DownloadService.DownloadImages(listImages, outputDir, null)
+    let StatusDownloadDover: number | boolean = 0
+    // save manga only if manga_title is not saved
+    let isNewManga = false
+    if (mangaData.value) {
+      const m = new Manga()
+      m.main_title = mangaData.value.title
+      // SaveManga returns [id, isNew]
+      const result = await DatabaseService.SaveManga(m)
+      if (Array.isArray(result)) {
+        mangaIdDb.value = result[0]
+        isNewManga = result[1]
+      } else {
+        // Fallback incase of single return
+        mangaIdDb.value = result as unknown as number
+        // If single return, we assume we don't know if it's new, so maybe default to false or check logic
+        // But with our backend change, it should be an array.
+      }
+    }
+
+    // Download cover only if it's a NEW manga
+    if (mangaData.value && isNewManga) {
+      try {
+        const mangaDir = await getDownloadMangaDir(mangaData.value.title)
+        await DownloadService.DownloadImage(
+          mangaData.value.cover,
+          mangaDir,
+          'cover',
+          null,
+        )
+      } catch (err) {
+        console.error('Failed to download cover:', err)
+        // Non-blocking error for cover
+      }
+    }
+
+    // save chapter
+    if (mangaIdDb.value !== 0 && chapterInfo) {
+      const c = new Chapter()
+      c.manga_id = mangaIdDb.value
+      c.chapter_number = Number(chapterInfo.chapter)
+      c.chapter_title = chapterInfo.chapter_title || ''
+      c.volume = Number(chapterInfo.chapter_volume) || 0
+      c.language = chapterInfo.language || 'en'
+      c.translator_group = chapterInfo.group_name || 'unknown'
+      c.path = chapterPath
+      c.release_time_raw = chapterInfo.time || new Date().toISOString()
+      c.is_compressed = 0
+
+      try {
+        await DatabaseService.CreateChapter(c)
+      } catch (err) {
+        message.error('Failed to save chapter ' + chapterInfo?.chapter)
+        console.error(err)
+      }
+    }
 
     message.success(`Chapter ${chapterInfo?.chapter} downloaded successfully`)
   } catch (error) {

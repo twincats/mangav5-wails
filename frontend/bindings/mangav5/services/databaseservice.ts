@@ -96,8 +96,8 @@ export function GetConfigValue(key: string): $CancellablePromise<string> {
 /**
  * GetLatestManga returns the latest updated manga
  */
-export function GetLatestManga(limit: number): $CancellablePromise<models$0.LatestManga[]> {
-    return $Call.ByID(2834965160, limit).then(($result: any) => {
+export function GetLatestManga(): $CancellablePromise<models$0.LatestManga[]> {
+    return $Call.ByID(2834965160).then(($result: any) => {
         return $$createType10($result);
     });
 }
@@ -142,6 +142,14 @@ export function ListScrapingRulesBasic(): $CancellablePromise<models$0.ScrapingR
     return $Call.ByID(4162381753).then(($result: any) => {
         return $$createType18($result);
     });
+}
+
+/**
+ * SaveManga inserts a new manga if it doesn't exist, or retrieves the existing one.
+ * Returns the manga ID and a boolean indicating if it was newly inserted (true) or retrieved (false).
+ */
+export function SaveManga(manga: models$0.Manga): $CancellablePromise<[number, boolean]> {
+    return $Call.ByID(36930252, manga);
 }
 
 export function SaveScrapingRule(rule: models$0.ScrapingRule): $CancellablePromise<void> {

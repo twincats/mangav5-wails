@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-resty/resty/v2"
 )
 
-func downloadImage(
+func DownloadImage(
 	ctx context.Context,
 	client *resty.Client,
 	url string,
@@ -40,7 +41,9 @@ func downloadImage(
 		ext := detectExt(resp)
 		var name string
 		if baseName != "" {
-			name = baseName + ext
+			// Remove existing extension from baseName if present to avoid double extensions like .webp.jpg
+			cleanBaseName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+			name = cleanBaseName + ext
 		} else {
 			name = fmt.Sprintf("%x%s", sha1.Sum([]byte(url)), ext)
 		}

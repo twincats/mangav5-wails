@@ -19,6 +19,17 @@ func NewChapterRepo(db *sql.DB) *ChapterRepo {
 
 // Insert
 func (r *ChapterRepo) Insert(ctx context.Context, c *models.Chapter) (int64, error) {
+	// Set defaults
+	if c.Status == "" {
+		c.Status = "valid"
+	}
+	if c.ReleaseTimeTS == 0 && c.ReleaseTimeRaw != "" {
+		if ts, _ := util.ParseReleaseTime(c.ReleaseTimeRaw); ts != nil {
+			c.ReleaseTimeTS = *ts
+		}
+	}
+	// StatusRead defaults to 0 (int zero value), so no need to set explicitly if 0 is desired
+
 	res, err := r.DB.ExecContext(ctx, `
 		INSERT INTO chapters (
 			manga_id, chapter_number, chapter_title, volume, translator_group, language,
@@ -57,6 +68,9 @@ func (r *ChapterRepo) BatchInsert(ctx context.Context, chapters []models.Chapter
 			if ts, _ := util.ParseReleaseTime(c.ReleaseTimeRaw); ts != nil {
 				c.ReleaseTimeTS = *ts
 			}
+		}
+		if c.Status == "" {
+			c.Status = "valid"
 		}
 		_, err := stmt.ExecContext(ctx,
 			c.MangaID, c.ChapterNumber, c.ChapterTitle, c.Volume, c.TranslatorGroup, c.Language,

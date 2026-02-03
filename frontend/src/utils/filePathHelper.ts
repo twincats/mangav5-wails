@@ -30,10 +30,21 @@ export function safeWindowsDirectoryName(input: string, maxLen = 120): string {
   return s
 }
 
+export function ImagePath(title: string): string {
+  return `/filemanga/${safeWindowsDirectoryName(title)}`
+}
+
 export async function getDownloadDir(
   title: string = 'untitled',
   chapter: string | number = '000',
 ): Promise<string> {
   const downloadDir = await getMangaDirectory()
   return `${downloadDir}/${safeWindowsDirectoryName(title)}/${chapter}`
+}
+
+export async function getDownloadMangaDir(
+  title: string = 'untitled',
+): Promise<string> {
+  const downloadDir = await getMangaDirectory()
+  return `${downloadDir}/${safeWindowsDirectoryName(title)}`
 }

@@ -50,7 +50,7 @@ func DownloadImagesAdaptive(
 			baseName := fmt.Sprintf("%0*d", padWidth, idx+1)
 
 			start := time.Now()
-			err := downloadImage(ctx, client, url, cfg.OutputDir, baseName, cfg.RetryCount)
+			err := DownloadImage(ctx, client, url, cfg.OutputDir, baseName, cfg.RetryCount)
 			latency := time.Since(start)
 
 			// adaptive logic

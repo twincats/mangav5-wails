@@ -13,9 +13,11 @@ declare module 'vue' {
   export interface GlobalComponents {
     MonacoEditor: typeof import('./src/components/MonacoEditor.vue')['default']
     NButton: typeof import('naive-ui')['NButton']
+    NCard: typeof import('naive-ui')['NCard']
     NConfigProvider: typeof import('naive-ui')['NConfigProvider']
     NDataTable: typeof import('naive-ui')['NDataTable']
     NDialogProvider: typeof import('naive-ui')['NDialogProvider']
+    NEllipsis: typeof import('naive-ui')['NEllipsis']
     NGlobalStyle: typeof import('naive-ui')['NGlobalStyle']
     NH4: typeof import('naive-ui')['NH4']
     NImage: typeof import('naive-ui')['NImage']

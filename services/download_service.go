@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"mangav5/internal/downloader"
 	"time"
 
@@ -70,4 +71,32 @@ func (s *DownloadService) DownloadImages(urls []string, outputDir string, option
 		// Emit progress event to frontend
 		app.Event.Emit("downloadProgress", report)
 	})
+}
+
+// DownloadImage downloads a single image to the specified output directory
+func (s *DownloadService) DownloadImage(url string, outputDir string, baseName string, options *DownloadOptions) error {
+	// Default configuration
+	timeout := 30 * time.Second
+	retry := 3
+
+	// Apply options if provided
+	if options != nil {
+		if options.TimeoutSeconds > 0 {
+			timeout = time.Duration(options.TimeoutSeconds) * time.Second
+		}
+		if options.RetryCount > 0 {
+			retry = options.RetryCount
+		}
+	}
+
+	// get application context
+	ctx := context.Background()
+	app := application.Get()
+	if app != nil {
+		ctx = app.Context()
+	}
+
+	client := downloader.NewRestyClient(timeout)
+
+	return downloader.DownloadImage(ctx, client, url, outputDir, baseName, retry)
 }

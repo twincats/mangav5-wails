@@ -35,6 +35,9 @@ func (s *FileService) GetMangaDir() (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if mangaDir == nil {
+			return "", errors.New("manga directory not configured")
+		}
 		MANGA_DIR = mangaDir.Value
 		return mangaDir.Value, nil
 	}
@@ -100,24 +103,56 @@ func (s *FileService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Fallback logic for cover.webp
-	// If cover.webp is requested but does not exist, try to serve the first image in the directory or subdirectories
-	if strings.EqualFold(filepath.Base(fullPath), "cover.webp") {
+	// Fallback logic for cover.webp or cover
+	// If cover.webp is requested but does not exist, try:
+	// 1. "cover" with other extensions in the same directory
+	// 2. Any first image in the same directory
+	// 3. Any first image in subdirectories
+	baseName := filepath.Base(fullPath)
+	if strings.EqualFold(baseName, "cover.webp") || strings.EqualFold(baseName, "cover") {
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 			dir := filepath.Dir(fullPath)
+			found := false
 
-			// WalkDir traverses the directory tree rooted at dir
-			filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-				if err != nil {
-					return nil // Skip errors
+			// 1. Priority: Check for cover.* in the same directory
+			extensions := []string{".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+			for _, ext := range extensions {
+				coverPath := filepath.Join(dir, "cover"+ext)
+				if _, err := os.Stat(coverPath); err == nil {
+					fullPath = coverPath
+					found = true
+					break
 				}
-				// Found the first image file?
-				if !d.IsDir() && isImageFile(d.Name()) {
-					fullPath = path
-					return fs.SkipAll // Stop walking immediately
+			}
+
+			// 2. Priority: Check for any image in the same directory
+			if !found {
+				entries, err := os.ReadDir(dir)
+				if err == nil {
+					for _, entry := range entries {
+						if !entry.IsDir() && isImageFile(entry.Name()) {
+							fullPath = filepath.Join(dir, entry.Name())
+							found = true
+							break
+						}
+					}
 				}
-				return nil
-			})
+			}
+
+			// 3. Priority: Check for any image in subdirectories (recursive)
+			if !found {
+				filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+					if err != nil {
+						return nil // Skip errors
+					}
+					// Found the first image file?
+					if !d.IsDir() && isImageFile(d.Name()) {
+						fullPath = path
+						return fs.SkipAll // Stop walking immediately
+					}
+					return nil
+				})
+			}
 		}
 	}
 

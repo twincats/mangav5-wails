@@ -231,11 +231,7 @@ func (r *MangaRepo) GetMangaWithAlternativeTitles(ctx context.Context, id int64)
 }
 
 // GetLatestManga returns the latest updated manga with their latest chapter
-func (r *MangaRepo) GetLatestManga(ctx context.Context, limit int) ([]models.LatestManga, error) {
-	if limit <= 0 {
-		limit = 10
-	}
-
+func (r *MangaRepo) GetLatestManga(ctx context.Context) ([]models.LatestManga, error) {
 	query := `
 		SELECT
 		  m.manga_id        AS manga_id,
@@ -257,11 +253,10 @@ func (r *MangaRepo) GetLatestManga(ctx context.Context, limit int) ([]models.Lat
 		  )
 		ORDER BY
 		  c.created_at DESC,
-		  m.main_title
-		LIMIT ?;
+		  m.main_title;
 	`
 
-	rows, err := r.DB.QueryContext(ctx, query, limit)
+	rows, err := r.DB.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -425,6 +420,57 @@ func (r *MangaRepo) ScanDirectoryForManga(ctx context.Context, mangasDir string)
 	}
 
 	return nil
+}
+
+// SaveManga inserts a new manga if it doesn't exist (by MainTitle), or retrieves the existing one.
+// It sets default values for Description, Year, and StatusID if they are missing.
+// Returns the manga ID and a boolean indicating if it was newly inserted (true) or retrieved (false).
+func (r *MangaRepo) SaveManga(ctx context.Context, manga *models.Manga) (int64, bool, error) {
+	// 1. If ID is already set, assume it's already saved/handled.
+	if manga.ID != 0 {
+		return manga.ID, false, nil
+	}
+
+	if manga.MainTitle == "" {
+		return 0, false, errors.New("main_title is required")
+	}
+
+	// 2. Check if exists by MainTitle
+	var existingID int64
+	err := r.DB.QueryRowContext(ctx, "SELECT manga_id FROM manga WHERE main_title = ?", manga.MainTitle).Scan(&existingID)
+	if err == nil {
+		// Manga exists, update the ID in the struct
+		manga.ID = existingID
+		return existingID, false, nil
+	} else if err != sql.ErrNoRows {
+		return 0, false, fmt.Errorf("failed to check existing manga: %w", err)
+	}
+
+	// 3. Apply defaults
+	if manga.Description == "" {
+		manga.Description = fmt.Sprintf("Manga: %s", manga.MainTitle)
+	}
+	if manga.Year == 0 {
+		manga.Year = time.Now().Year()
+	}
+	if manga.StatusID == 0 {
+		manga.StatusID = 1 // Ongoing
+	}
+
+	// 4. Insert
+	id, err := r.Insert(ctx, manga)
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to insert manga: %w", err)
+	}
+	manga.ID = id
+
+	// Emit event for new manga
+	app := application.Get()
+	if app != nil {
+		app.Event.Emit("mangaSaved", manga)
+	}
+
+	return id, true, nil
 }
 
 func parseChapterNumber(name string) (float64, error) {

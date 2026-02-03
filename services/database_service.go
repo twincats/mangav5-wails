@@ -88,8 +88,8 @@ func (s *DatabaseService) GetMangaWithAlternativeTitles(ctx context.Context, id 
 }
 
 // GetLatestManga returns the latest updated manga
-func (s *DatabaseService) GetLatestManga(ctx context.Context, limit int) ([]models.LatestManga, error) {
-	return s.mangaRepo.GetLatestManga(ctx, limit)
+func (s *DatabaseService) GetLatestManga(ctx context.Context) ([]models.LatestManga, error) {
+	return s.mangaRepo.GetLatestManga(ctx)
 }
 
 // ScanDirectoryForManga scans the given directory for manga and chapters
@@ -98,6 +98,12 @@ func (s *DatabaseService) ScanDirectoryForManga(ctx context.Context, mangasDir s
 		return errors.New("directory path cannot be empty")
 	}
 	return s.mangaRepo.ScanDirectoryForManga(ctx, mangasDir)
+}
+
+// SaveManga inserts a new manga if it doesn't exist, or retrieves the existing one.
+// Returns the manga ID and a boolean indicating if it was newly inserted (true) or retrieved (false).
+func (s *DatabaseService) SaveManga(ctx context.Context, manga models.Manga) (int64, bool, error) {
+	return s.mangaRepo.SaveManga(ctx, &manga)
 }
 
 // =====================
