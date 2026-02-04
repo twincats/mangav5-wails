@@ -29,6 +29,7 @@ const menuOptions: MenuOption[] = [
 ]
 
 const router = useRouter()
+const route = useRoute()
 const headerKey = ref('home')
 const headerMenu = [
   {
@@ -99,7 +100,7 @@ const collapsed = ref(true)
                     />
                   </n-layout-header>
                   <n-layout-content
-                    content-style="padding: 24px; height: calc(100vh - 66px);"
+                    :content-style="`padding: ${route.name === 'read' ? '0' : '24px'}; height: calc(100vh - 66px);`"
                   >
                     <router-view></router-view>
                   </n-layout-content>

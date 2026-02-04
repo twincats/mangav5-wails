@@ -31,6 +31,12 @@ export function safeWindowsDirectoryName(input: string, maxLen = 120): string {
 }
 
 export function ImagePath(title: string): string {
+  const parts = title.split('/')
+  if (parts.length > 1) {
+    const mTitle = safeWindowsDirectoryName(parts[0])
+    const mChapter = parts.slice(1).join('/')
+    return `/filemanga/${mTitle}/${mChapter}`
+  }
   return `/filemanga/${safeWindowsDirectoryName(title)}`
 }
 

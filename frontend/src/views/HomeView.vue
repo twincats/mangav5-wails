@@ -8,6 +8,10 @@
           v-for="(m, index) in mangaList"
           class="relative group select-none"
           @click="clickManga(m.manga_id)"
+          :style="{
+            '--custom-contextmenu': 'home-menu',
+            '--custom-contextmenu-data': m.manga_id,
+          }"
         >
           <n-image
             style="border: 1px solid #000"

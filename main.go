@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"log"
 	"mangav5/internal/db"
+	"mangav5/internal/menu"
 	"mangav5/internal/repo"
 	"mangav5/internal/util"
 	"mangav5/services"
@@ -90,6 +91,12 @@ func main() {
 	app.OnShutdown(func() {
 		browserService.Cleanup()
 	})
+
+	cm := menu.NewContextMenu()
+	hcm := cm.GetHomeContextMenu()
+	rcm := cm.GetReadContextMenu()
+	app.ContextMenu.Add("home-menu", hcm)
+	app.ContextMenu.Add("read-menu", rcm)
 
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.
