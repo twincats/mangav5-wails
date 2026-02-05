@@ -473,6 +473,42 @@ func (r *MangaRepo) SaveManga(ctx context.Context, manga *models.Manga) (int64, 
 	return id, true, nil
 }
 
+// GetMangaDetail returns a manga with its alternative titles and chapters and manga_statis
+func (r *MangaRepo) GetMangaDetail(ctx context.Context, id int64) (*models.MangaDetail, error) {
+	manga, err := r.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if manga == nil {
+		return nil, nil
+	}
+
+	var statusName string
+	err = r.DB.QueryRowContext(ctx, "SELECT status_name FROM manga_status WHERE status_id = ?", manga.StatusID).Scan(&statusName)
+	if err != nil {
+		// If status not found, just ignore or set to unknown
+		statusName = "Unknown"
+	}
+
+	altTitles, err := r.GetAlternativeTitles(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	chapterRepo := NewChapterRepo(r.DB)
+	chapters, err := chapterRepo.GetByMangaID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.MangaDetail{
+		Manga:             *manga,
+		MangaStatus:       statusName,
+		AlternativeTitles: altTitles,
+		Chapters:          chapters,
+	}, nil
+}
+
 func parseChapterNumber(name string) (float64, error) {
 	// Try direct parse
 	if val, err := strconv.ParseFloat(name, 64); err == nil {

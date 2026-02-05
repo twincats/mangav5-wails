@@ -27,6 +27,13 @@ type MangaWithAlt struct {
 	AlternativeTitles []AlternativeTitle `json:"alternative_titles"`
 }
 
+type MangaDetail struct {
+	Manga
+	MangaStatus       string             `json:"manga_status"`
+	AlternativeTitles []AlternativeTitle `json:"alternative_titles"`
+	Chapters          []Chapter          `json:"chapters"`
+}
+
 type LatestManga struct {
 	MangaID       int64   `json:"manga_id"`
 	MainTitle     string  `json:"main_title"`

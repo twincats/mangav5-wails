@@ -26,6 +26,13 @@ const routes: RouteRecordRaw[] = [
     path: '/chapters/:mangaId',
     name: 'chapters',
     component: () => import('../views/ChapterView.vue'),
+    props: route => {
+      const raw = Array.isArray(route.params.mangaId)
+        ? route.params.mangaId[0]
+        : route.params.mangaId
+
+      return { mangaId: Number(raw) }
+    },
   },
   {
     path: '/read/:chapterId',

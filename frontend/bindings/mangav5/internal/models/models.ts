@@ -246,6 +246,71 @@ export class Manga {
     }
 }
 
+export class MangaDetail {
+    "id": number;
+    "main_title": string;
+    "description": string;
+    "year": number;
+    "status_id": number;
+    "created_at": string;
+    "updated_at": string;
+    "manga_status": string;
+    "alternative_titles": AlternativeTitle[];
+    "chapters": Chapter[];
+
+    /** Creates a new MangaDetail instance. */
+    constructor($$source: Partial<MangaDetail> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("main_title" in $$source)) {
+            this["main_title"] = "";
+        }
+        if (!("description" in $$source)) {
+            this["description"] = "";
+        }
+        if (!("year" in $$source)) {
+            this["year"] = 0;
+        }
+        if (!("status_id" in $$source)) {
+            this["status_id"] = 0;
+        }
+        if (!("created_at" in $$source)) {
+            this["created_at"] = "";
+        }
+        if (!("updated_at" in $$source)) {
+            this["updated_at"] = "";
+        }
+        if (!("manga_status" in $$source)) {
+            this["manga_status"] = "";
+        }
+        if (!("alternative_titles" in $$source)) {
+            this["alternative_titles"] = [];
+        }
+        if (!("chapters" in $$source)) {
+            this["chapters"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MangaDetail instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MangaDetail {
+        const $$createField8_0 = $$createType1;
+        const $$createField9_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("alternative_titles" in $$parsedSource) {
+            $$parsedSource["alternative_titles"] = $$createField8_0($$parsedSource["alternative_titles"]);
+        }
+        if ("chapters" in $$parsedSource) {
+            $$parsedSource["chapters"] = $$createField9_0($$parsedSource["chapters"]);
+        }
+        return new MangaDetail($$parsedSource as Partial<MangaDetail>);
+    }
+}
+
 export class MangaStatus {
     "id": number;
     "name": string;
@@ -380,3 +445,5 @@ export class ScrapingRule {
 // Private type creation functions
 const $$createType0 = AlternativeTitle.createFrom;
 const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = Chapter.createFrom;
+const $$createType3 = $Create.Array($$createType2);

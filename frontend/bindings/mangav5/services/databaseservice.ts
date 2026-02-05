@@ -112,35 +112,44 @@ export function GetManga(id: number): $CancellablePromise<models$0.Manga | null>
 }
 
 /**
+ * GetMangaDetail returns a manga with its alternative titles and chapters
+ */
+export function GetMangaDetail(id: number): $CancellablePromise<models$0.MangaDetail | null> {
+    return $Call.ByID(2810622860, id).then(($result: any) => {
+        return $$createType14($result);
+    });
+}
+
+/**
  * GetMangaWithAlternativeTitles returns a manga with its alternative titles
  */
 export function GetMangaWithAlternativeTitles(id: number): $CancellablePromise<models$0.MangaWithAlt | null> {
     return $Call.ByID(2965412675, id).then(($result: any) => {
-        return $$createType14($result);
+        return $$createType16($result);
     });
 }
 
 export function GetScrapingRule(siteKey: string): $CancellablePromise<models$0.ScrapingRule | null> {
     return $Call.ByID(2300776374, siteKey).then(($result: any) => {
-        return $$createType16($result);
+        return $$createType18($result);
     });
 }
 
 export function ListManga(limit: number, offset: number): $CancellablePromise<models$0.Manga[]> {
     return $Call.ByID(3312694067, limit, offset).then(($result: any) => {
-        return $$createType17($result);
+        return $$createType19($result);
     });
 }
 
 export function ListScrapingRules(): $CancellablePromise<models$0.ScrapingRule[]> {
     return $Call.ByID(2931394105).then(($result: any) => {
-        return $$createType18($result);
+        return $$createType20($result);
     });
 }
 
 export function ListScrapingRulesBasic(): $CancellablePromise<models$0.ScrapingRule[]> {
     return $Call.ByID(4162381753).then(($result: any) => {
-        return $$createType18($result);
+        return $$createType20($result);
     });
 }
 
@@ -192,9 +201,11 @@ const $$createType9 = models$0.LatestManga.createFrom;
 const $$createType10 = $Create.Array($$createType9);
 const $$createType11 = models$0.Manga.createFrom;
 const $$createType12 = $Create.Nullable($$createType11);
-const $$createType13 = models$0.MangaWithAlt.createFrom;
+const $$createType13 = models$0.MangaDetail.createFrom;
 const $$createType14 = $Create.Nullable($$createType13);
-const $$createType15 = models$0.ScrapingRule.createFrom;
+const $$createType15 = models$0.MangaWithAlt.createFrom;
 const $$createType16 = $Create.Nullable($$createType15);
-const $$createType17 = $Create.Array($$createType11);
-const $$createType18 = $Create.Array($$createType15);
+const $$createType17 = models$0.ScrapingRule.createFrom;
+const $$createType18 = $Create.Nullable($$createType17);
+const $$createType19 = $Create.Array($$createType11);
+const $$createType20 = $Create.Array($$createType17);

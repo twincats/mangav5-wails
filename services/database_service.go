@@ -87,6 +87,11 @@ func (s *DatabaseService) GetMangaWithAlternativeTitles(ctx context.Context, id 
 	return s.mangaRepo.GetMangaWithAlternativeTitles(ctx, id)
 }
 
+// GetMangaDetail returns a manga with its alternative titles and chapters
+func (s *DatabaseService) GetMangaDetail(ctx context.Context, id int64) (*models.MangaDetail, error) {
+	return s.mangaRepo.GetMangaDetail(ctx, id)
+}
+
 // GetLatestManga returns the latest updated manga
 func (s *DatabaseService) GetLatestManga(ctx context.Context) ([]models.LatestManga, error) {
 	return s.mangaRepo.GetLatestManga(ctx)
