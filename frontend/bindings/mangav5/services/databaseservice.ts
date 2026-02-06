@@ -24,6 +24,13 @@ export function BatchCreateManga(mangas: models$0.Manga[]): $CancellablePromise<
     return $Call.ByID(493328281, mangas);
 }
 
+/**
+ * CheckStatusMangaByTitle checks if a manga with the given title exists.
+ */
+export function CheckStatusMangaByTitle(title: string): $CancellablePromise<[boolean, number]> {
+    return $Call.ByID(2765024448, title);
+}
+
 export function CreateChapter(chapter: models$0.Chapter): $CancellablePromise<number> {
     return $Call.ByID(1456305318, chapter);
 }
@@ -151,6 +158,13 @@ export function ListScrapingRulesBasic(): $CancellablePromise<models$0.ScrapingR
     return $Call.ByID(4162381753).then(($result: any) => {
         return $$createType20($result);
     });
+}
+
+/**
+ * MarkChapterAsRead updates the chapter status_read to true
+ */
+export function MarkChapterAsRead(chapterID: number): $CancellablePromise<void> {
+    return $Call.ByID(3517251945, chapterID);
 }
 
 /**

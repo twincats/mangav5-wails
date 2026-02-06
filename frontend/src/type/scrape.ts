@@ -14,6 +14,7 @@ export interface ChapterData {
   group_name: string
   language: string
   time: string
+  status?: boolean
 }
 
 export interface ChapterPages {

@@ -183,3 +183,9 @@ func (r *ChapterRepo) Delete(ctx context.Context, id int64) error {
 	_, err := r.DB.ExecContext(ctx, `DELETE FROM chapters WHERE chapter_id=?`, id)
 	return err
 }
+
+// UpdateStatusRead updates the chapter status_read to true (1) by chapter_id
+func (r *ChapterRepo) UpdateStatusRead(ctx context.Context, chapterID int64) error {
+	_, err := r.DB.ExecContext(ctx, "UPDATE chapters SET status_read = 1, updated_at = datetime('now') WHERE chapter_id = ?", chapterID)
+	return err
+}

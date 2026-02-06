@@ -111,6 +111,11 @@ func (s *DatabaseService) SaveManga(ctx context.Context, manga models.Manga) (in
 	return s.mangaRepo.SaveManga(ctx, &manga)
 }
 
+// CheckStatusMangaByTitle checks if a manga with the given title exists.
+func (s *DatabaseService) CheckStatusMangaByTitle(ctx context.Context, title string) (bool, int64, error) {
+	return s.mangaRepo.CheckStatusMangaByTitle(ctx, title)
+}
+
 // =====================
 // Chapter Methods
 // =====================
@@ -137,6 +142,11 @@ func (s *DatabaseService) UpdateChapter(ctx context.Context, chapter models.Chap
 
 func (s *DatabaseService) DeleteChapter(ctx context.Context, id int64) error {
 	return s.chapterRepo.Delete(ctx, id)
+}
+
+// MarkChapterAsRead updates the chapter status_read to true
+func (s *DatabaseService) MarkChapterAsRead(ctx context.Context, chapterID int64) error {
+	return s.chapterRepo.UpdateStatusRead(ctx, chapterID)
 }
 
 // =====================

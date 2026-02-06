@@ -509,6 +509,19 @@ func (r *MangaRepo) GetMangaDetail(ctx context.Context, id int64) (*models.Manga
 	}, nil
 }
 
+// CheckStatusMangaByTitle check if manga title is in db or not
+func (r *MangaRepo) CheckStatusMangaByTitle(ctx context.Context, title string) (bool, int64, error) {
+	var id int64
+	err := r.DB.QueryRowContext(ctx, "SELECT manga_id FROM manga WHERE main_title = ?", title).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, 0, nil
+	}
+	if err != nil {
+		return false, 0, err
+	}
+	return true, id, nil
+}
+
 func parseChapterNumber(name string) (float64, error) {
 	// Try direct parse
 	if val, err := strconv.ParseFloat(name, 64); err == nil {

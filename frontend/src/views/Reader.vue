@@ -41,7 +41,15 @@
             lazy
             object-fit="contain"
             class="reader-image"
-          />
+          >
+            <template #placeholder>
+              <div
+                class="flex items-center justify-center h-[50vh] w-full bg-gray-800/30 rounded"
+              >
+                <n-spin size="large" />
+              </div>
+            </template>
+          </n-image>
           <div class="image-counter">
             <!-- Calculate actual index based on row -->
             {{ img.index + 1 }} /

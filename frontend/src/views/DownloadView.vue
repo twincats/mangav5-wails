@@ -7,7 +7,7 @@
           GO
         </n-button>
       </n-input-group>
-      <n-button type="primary" secondary @click="progressModal = true">
+      <n-button type="primary" secondary @click="clearDownloadInput">
         <template #icon>
           <n-icon><CancelRound /></n-icon>
         </template>
@@ -307,6 +307,26 @@ const fetchScrapeManga = async () => {
       mangaRule,
       downloadUrl.value,
     )) as unknown as MangaData
+    // set chapter status
+    // check if manga title is in db or not
+    const [isExist, mangaId] = await DatabaseService.CheckStatusMangaByTitle(
+      result.title,
+    )
+    const existingChapters = new Set<number>()
+    if (isExist) {
+      // get data chapters by mangaID
+      const chap = await DatabaseService.GetChaptersByMangaID(mangaId)
+      chap.forEach(c => existingChapters.add(c.chapter_number))
+    }
+
+    if (result.chapters) {
+      result.chapters.forEach(c => {
+        const cNum =
+          typeof c.chapter === 'string' ? parseFloat(c.chapter) : c.chapter
+        c.status = existingChapters.has(cNum)
+      })
+    }
+    // const fe
     mangaData.value = result
   } catch (error) {
     message.error('Failed to scrape manga')
@@ -320,6 +340,12 @@ const getScrapeRule = async (siteKey: string) => {
     message.error('Failed to get scrape rule')
     return null
   }
+}
+
+const clearDownloadInput = () => {
+  downloadUrl.value = ''
+  mangaData.value = null
+  selectedSiteKey.value = ''
 }
 
 /* ======== TABLE FUNCTION ========== */
@@ -425,7 +451,7 @@ function createColumns({
       width: 80,
       ellipsis: true,
       render(row) {
-        if (row.language === 'id') {
+        if (row.status === true) {
           return h(
             NTag,
             { type: 'success', size: 'small' },
