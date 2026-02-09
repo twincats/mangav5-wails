@@ -26,10 +26,35 @@ func ParseReleaseTime(raw string) (*int64, string) {
 
 	layouts := []string{
 		time.RFC3339,
-		"02 Jan 2006 15:04",
-		"January 2, 2006",
-		"Jan 02, 2006",
+		time.RFC3339Nano,
+		"2006-01-02T15:04:05-07:00",
+		"2006-01-02T15:04:05Z07:00",
+
+		// YYYY-MM-DD
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
 		"2006-01-02",
+
+		// YYYY/MM/DD
+		"2006/01/02 15:04:05",
+		"2006/01/02",
+
+		// Explicit Month (English) - Unambiguous
+		"02 Jan 2006 15:04",
+		"02 Jan 2006",
+		"2 Jan 2006",
+		"Jan 02, 2006",
+		"Jan 2, 2006",
+		"January 02, 2006",
+		"January 2, 2006",
+
+		// DD/MM/YYYY (Common in ID/EU)
+		"02/01/2006",
+		"02-01-2006",
+		"02.01.2006",
+
+		// US Format
+		"01/02/2006",
 	}
 
 	for _, l := range layouts {

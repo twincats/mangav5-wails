@@ -3,7 +3,7 @@
     <n-spin :show="!mangaDetail">
       <div v-if="mangaDetail">
         <n-card>
-          <n-grid x-gap="24" cols="1 600:4">
+          <n-grid x-gap="24" cols="1 600:6">
             <n-gi span="1">
               <div class="aspect-[2/3] w-full relative">
                 <n-image
@@ -17,7 +17,7 @@
                 />
               </div>
             </n-gi>
-            <n-gi span="3">
+            <n-gi span="5">
               <n-space vertical size="large">
                 <div>
                   <n-h1 class="mb-2">{{ mangaDetail.main_title }}</n-h1>

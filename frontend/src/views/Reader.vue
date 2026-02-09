@@ -34,6 +34,9 @@
           :key="imgIndex"
           class="image-wrapper"
           :class="{ 'double-page-item': readingMode === 'double-page' }"
+          :style="{
+            '--custom-contextmenu': 'read-menu',
+          }"
         >
           <n-image
             :src="`${ImagePath(chapter?.path + '/' + img.fileName)}`"
