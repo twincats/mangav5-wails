@@ -9,10 +9,7 @@
           class="relative group select-none rounded-1 transition-all duration-300"
           :class="{ 'today-highlight': isToday(m.download_time) }"
           @click="clickManga(m.manga_id)"
-          :style="{
-            '--custom-contextmenu': 'home-menu',
-            '--custom-contextmenu-data': m.manga_id,
-          }"
+          @contextmenu.prevent="openContextMenu"
         >
           <n-image
             class="rounded-1 block"
@@ -46,6 +43,15 @@
         </div>
       </div>
     </div>
+    <teleport to="#main">
+      <context-menu ref="refMenu">
+        <li>Add Alternative</li>
+        <li>Convert Chapter Webp</li>
+        <li>Compress Manga Chapter</li>
+        <div class="divider"></div>
+        <li>Delete Manga</li>
+      </context-menu>
+    </teleport>
   </div>
 </template>
 <!-- Ore ga Kokuhaku Sarete Kara, Ojou no Yousu ga Okashii/4/01.jpg -->
@@ -53,9 +59,11 @@
 import { DatabaseService } from '../../bindings/mangav5/services'
 import { LatestManga } from '../../bindings/mangav5/internal/models'
 import { ImagePath } from '@/utils/filePathHelper'
+import { UseContextMenu } from '@/utils/contextMenuHelper'
 
 const message = useMessage()
 const router = useRouter()
+const { refMenu, openContextMenu } = UseContextMenu()
 
 const mangaList = ref<LatestManga[]>([])
 const fetchMangaList = async () => {
@@ -75,6 +83,9 @@ const clickChapter = (chapter_id: number) => {
   router.push(`/read/${chapter_id}`)
 }
 
+onMounted(() => {
+  refMenu.value
+})
 /* ========= HELPER FUNCTION ============== */
 const isToday = (date_string: string) => {
   const date = new Date(date_string)

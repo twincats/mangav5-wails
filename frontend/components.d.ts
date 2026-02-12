@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ContextMenu: typeof import('./src/components/ContextMenu.vue')['default']
     MonacoEditor: typeof import('./src/components/MonacoEditor.vue')['default']
     NButton: typeof import('naive-ui')['NButton']
     NCard: typeof import('naive-ui')['NCard']

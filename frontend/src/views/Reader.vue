@@ -34,9 +34,7 @@
           :key="imgIndex"
           class="image-wrapper"
           :class="{ 'double-page-item': readingMode === 'double-page' }"
-          :style="{
-            '--custom-contextmenu': 'read-menu',
-          }"
+          @contextmenu.prevent="openContextMenu"
         >
           <n-image
             :src="`${ImagePath(chapter?.path + '/' + img.fileName)}`"
@@ -61,6 +59,24 @@
         </div>
       </div>
     </div>
+    <teleport to="#main">
+      <context-menu ref="refMenu">
+        <li>Fullscreen</li>
+        <li>2 Pages Mode</li>
+        <li>LTR</li>
+        <li>RTL</li>
+        <li>Full Width</li>
+        <li>Normal Width</li>
+        <div class="divider"></div>
+        <li>Previous Chapter</li>
+        <li>Home</li>
+        <li>Next Chapter</li>
+        <div class="divider"></div>
+        <li>Copy Image</li>
+        <li>Image Link</li>
+        <li>Delete Chapter</li>
+      </context-menu>
+    </teleport>
   </div>
 </template>
 
@@ -70,12 +86,14 @@ import { Chapter } from '../../bindings/mangav5/internal/models'
 import { ImagePath } from '@/utils/filePathHelper'
 import { Window } from '@wailsio/runtime'
 import { onBeforeRouteLeave } from 'vue-router'
+import { UseContextMenu } from '@/utils/contextMenuHelper'
 
 const message = useMessage()
 const route = useRoute()
 const { chapterId } = defineProps<{ chapterId: number }>()
 const imageList = ref<string[]>([])
 const chapter = ref<Chapter | null>(null)
+const { refMenu, openContextMenu } = UseContextMenu()
 
 // Window State Management
 const wasMaximizedBefore = ref(false)
@@ -193,6 +211,7 @@ const calculateIndex = (rowIndex: number, imgIndex: number) => 0
 
 onMounted(() => {
   getChapterImageList(chapterId)
+  refMenu.value
 })
 </script>
 

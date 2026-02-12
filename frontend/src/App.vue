@@ -102,7 +102,9 @@ const collapsed = ref(true)
                   <n-layout-content
                     :content-style="`padding: ${route.name === 'read' ? '0' : '24px'}; height: calc(100vh - 66px);`"
                   >
-                    <router-view></router-view>
+                    <div id="main">
+                      <router-view></router-view>
+                    </div>
                   </n-layout-content>
                   <n-layout-footer bordered>
                     <div class="px-5">Mangav5 - All in one Manga manager</div>
