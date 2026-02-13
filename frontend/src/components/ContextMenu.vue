@@ -24,7 +24,7 @@ interface Props {
 
 // defineProps with default value need reactivityTransform: true
 const prop = withDefaults(defineProps<Props>(), {
-  width: 230,
+  width: 200,
 })
 
 // setup emit
@@ -85,6 +85,15 @@ defineExpose({
   --app-context: #292929;
   --app-context-light: #313131;
   --app-context-divider: #535353;
+  /* teks utama */
+  --app-red: #e53935;
+  --app-orange: #ff9800;
+  --app-green: #4caf50;
+
+  /* background hover */
+  --app-red-hover-bg: rgba(229, 57, 53, 0.18);
+  --app-orange-hover-bg: rgba(255, 152, 0, 0.18);
+  --app-green-hover-bg: rgba(76, 175, 80, 0.18);
 }
 .context-menu {
   background-color: var(--app-context);
@@ -94,6 +103,7 @@ defineExpose({
     0 4px 6px rgba(0, 0, 0, 0.1),
     0 1px 3px rgba(0, 0, 0, 0.08);
   z-index: 50;
+  width: max-content;
 }
 
 .context-menu ul {
@@ -105,7 +115,7 @@ defineExpose({
 .context-menu ul li {
   user-select: none;
   margin: 0.25rem;
-  padding: 0.25rem 0.75rem;
+  padding: 0.25rem 2rem 0.25rem 0.75rem;
   display: flex;
   border-radius: 0.25rem;
   font-size: 0.875rem;
@@ -120,7 +130,12 @@ defineExpose({
   justify-content: space-between;
 }
 
-.context-menu ul li:hover {
+.context-menu ul li.disabled {
+  color: #999;
+  /* cursor: not-allowed; */
+}
+
+.context-menu ul li:not(.disabled):hover {
   background-color: var(--app-context-light);
 }
 
@@ -131,6 +146,28 @@ defineExpose({
 
 .context-menu ul li small {
   font-size: 0.75rem;
-  margin-right: 1.5rem;
+  min-width: 5rem;
+  text-align: right;
+}
+
+.context-menu ul li.red {
+  color: var(--app-red);
+}
+.context-menu ul li.red:hover {
+  background-color: var(--app-red-hover-bg);
+}
+
+.context-menu ul li.orange {
+  color: var(--app-orange);
+}
+.context-menu ul li.orange:hover {
+  background-color: var(--app-orange-hover-bg);
+}
+
+.context-menu ul li.green {
+  color: var(--app-green);
+}
+.context-menu ul li.green:hover {
+  background-color: var(--app-green-hover-bg);
 }
 </style>

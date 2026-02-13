@@ -34,7 +34,7 @@
               {{ m.main_title }}
             </div>
             <div
-              @click.stop="clickChapter(m.chapter_id)"
+              @click.stop="clickChapter(m.manga_id, m.chapter_id)"
               class="absolute bottom-0 left-0 right-0 bg-white/50 text-center rounded-b-1 text-black transition-all duration-300 ease-in-out group-hover:opacity-100 opacity-0"
             >
               <strong>Chapter {{ m.chapter_number }}</strong>
@@ -45,11 +45,11 @@
     </div>
     <teleport to="#main">
       <context-menu ref="refMenu">
-        <li>Add Alternative</li>
+        <li class="disabled">Add Alternative</li>
         <li>Convert Chapter Webp</li>
         <li>Compress Manga Chapter</li>
         <div class="divider"></div>
-        <li>Delete Manga</li>
+        <li class="red">Delete Manga</li>
       </context-menu>
     </teleport>
   </div>
@@ -79,8 +79,8 @@ const clickManga = (manga_id: number) => {
   router.push(`/chapters/${manga_id}`)
 }
 
-const clickChapter = (chapter_id: number) => {
-  router.push(`/read/${chapter_id}`)
+const clickChapter = (manga_id: number, chapter_id: number) => {
+  router.push(`/read/${manga_id}/${chapter_id}`)
 }
 
 onMounted(() => {

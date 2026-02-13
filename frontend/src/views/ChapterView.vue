@@ -130,8 +130,8 @@ const formatDate = (ts: number) => {
   return new Date(ts * 1000).toLocaleDateString()
 }
 
-const readChapter = (chapterId: number) => {
-  router.push(`/read/${chapterId}`)
+const readChapter = (mangaId: number, chapterId: number) => {
+  router.push(`/read/${mangaId}/${chapterId}`)
 }
 
 const renderIcon = (icon: any, color: string, tooltip: string) => {
@@ -247,7 +247,7 @@ const columns: DataTableColumns<Chapter> = [
           type: 'primary',
           secondary: true,
           disabled: row.status === 'missing', // Disable if missing
-          onClick: () => readChapter(row.id),
+          onClick: () => readChapter(mangaId, row.id),
         },
         { default: () => 'Read' },
       )
