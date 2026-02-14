@@ -8,7 +8,7 @@ import { Create as $Create } from "@wailsio/runtime";
 export class APIRequest {
     "url": string;
     "method"?: string;
-    "headers"?: { [_: string]: string };
+    "headers"?: { [_ in string]?: string };
 
     /** Creates a new APIRequest instance. */
     constructor($$source: Partial<APIRequest> = {}) {
@@ -130,7 +130,7 @@ export class DownloadOptions {
 export class EntryRule {
     "url": string;
     "method"?: string;
-    "headers"?: { [_: string]: string };
+    "headers"?: { [_ in string]?: string };
 
     /**
      * Extract params from URL

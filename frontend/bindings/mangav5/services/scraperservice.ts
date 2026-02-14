@@ -17,7 +17,7 @@ import * as $models from "./models.js";
 /**
  * Scrape executes the scraping rule
  */
-export function Scrape(rule: $models.SiteRule, overrideURL: string): $CancellablePromise<{ [_: string]: any }> {
+export function Scrape(rule: $models.SiteRule, overrideURL: string): $CancellablePromise<{ [_ in string]?: any }> {
     return $Call.ByID(1806806692, rule, overrideURL).then(($result: any) => {
         return $$createType0($result);
     });

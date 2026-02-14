@@ -1,8 +1,12 @@
 <template>
   <div>
     <div>
-      <!-- <n-image width="200" :src="imageUrl" preview-disabled />
-      <n-image width="200" :src="imgcover" preview-disabled /> -->
+      <home-search
+        class="mb-3"
+        v-model:search="search"
+        v-model:dateModel="dateModel"
+        v-if="breakpoints.greaterOrEqual('2xl').value"
+      />
       <div class="grid grid-cols-6 xl:grid-cols-10 gap-2">
         <div
           v-for="(m, index) in mangaList"
@@ -42,6 +46,12 @@
           </div>
         </div>
       </div>
+      <div class="mt-5 w-full absolute bottom-0 mb-5 flex justify-center">
+        <n-pagination
+          v-model:page="pagination.page"
+          :page-count="pagination.pageSize"
+        />
+      </div>
     </div>
     <teleport to="#main">
       <context-menu ref="refMenu">
@@ -60,11 +70,19 @@ import { DatabaseService } from '../../bindings/mangav5/services'
 import { LatestManga } from '../../bindings/mangav5/internal/models'
 import { ImagePath } from '@/utils/filePathHelper'
 import { UseContextMenu } from '@/utils/contextMenuHelper'
+import { breakpointsTailwind, useBreakpoints } from '@vueuse/core'
 
 const message = useMessage()
 const router = useRouter()
 const { refMenu, openContextMenu } = UseContextMenu()
+const pagination = reactive({
+  page: 1,
+  pageSize: 20,
+})
+const breakpoints = useBreakpoints(breakpointsTailwind)
 
+const search = ref('')
+const dateModel = ref(0)
 const mangaList = ref<LatestManga[]>([])
 const fetchMangaList = async () => {
   try {
