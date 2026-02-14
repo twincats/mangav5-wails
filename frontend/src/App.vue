@@ -105,6 +105,7 @@ const collapsed = ref(true)
                     <div id="main">
                       <router-view></router-view>
                     </div>
+                    <div id="reader-fs"></div>
                   </n-layout-content>
                   <n-layout-footer bordered>
                     <div class="px-5">Mangav5 - All in one Manga manager</div>

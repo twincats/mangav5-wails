@@ -21,7 +21,7 @@
         <n-radio-button value="ltr">LTR</n-radio-button>
       </n-radio-group>
     </div>
-
+    <div id="fs-menu"></div>
     <!-- Unified Scroll Area -->
     <div class="reader-scroll-area" ref="scrollAreaRef">
       <div
@@ -71,7 +71,7 @@
       </div>
       <div ref="endSentinelRef" style="height: 1px; width: 100%"></div>
     </div>
-    <teleport v-if="teleportReady" :to="teleportTarget">
+    <teleport v-if="teleportEnabled" :to="teleportTarget">
       <context-menu ref="refMenu">
         <template #default="{ item }">
           <li @click="toggleFullscreen">
@@ -127,7 +127,7 @@
 import { DatabaseService, FileService } from '../../bindings/mangav5/services'
 import { Chapter, MangaDetail } from '../../bindings/mangav5/internal/models'
 import { ImagePath } from '@/utils/filePathHelper'
-import { Window } from '@wailsio/runtime'
+import { Window as WailsWindow } from '@wailsio/runtime'
 import { onBeforeRouteLeave } from 'vue-router'
 import { UseContextMenu } from '@/utils/contextMenuHelper'
 
@@ -144,21 +144,28 @@ const chapter = ref<Chapter | null>(null)
 const mangaDetail = ref<MangaDetail | null>(null)
 const currentChapterIndex = ref<number>(0)
 const { refMenu, openContextMenu, closeContextMenu } = UseContextMenu()
-
-// Window State Management
 const wasMaximizedBefore = ref(false)
-Window.IsMaximised().then((isMax: boolean) => {
-  wasMaximizedBefore.value = isMax
-  if (!isMax) {
-    Window.Maximise()
-  }
-})
 
 onBeforeRouteLeave((_to, _from, next) => {
-  if (!wasMaximizedBefore.value) {
-    Window.Restore()
-  }
-  next()
+  try {
+    teleportEnabled.value = false
+    closeContextMenu()
+  } catch (_) {}
+  const exit = document.fullscreenElement
+    ? document.exitFullscreen().catch(() => {})
+    : Promise.resolve()
+  exit.finally(() => {
+    isFullscreen.value = false
+    if (rowObserver) rowObserver.disconnect()
+    if (bottomObserver) bottomObserver.disconnect()
+    scrollAreaRef.value?.removeEventListener('scroll', onScrollCheck as any)
+    if (!wasMaximizedBefore.value) {
+      try {
+        WailsWindow.Restore()
+      } catch (_) {}
+    }
+    next()
+  })
 })
 
 // Reading State
@@ -395,7 +402,14 @@ const toggleFullWidth = () => {
 }
 
 const goToHome = () => {
-  router.push({ name: 'home' })
+  teleportEnabled.value = false
+  const exit = document.fullscreenElement
+    ? document.exitFullscreen().catch(() => {})
+    : Promise.resolve()
+  exit.finally(() => {
+    isFullscreen.value = false
+    router.push({ name: 'home' })
+  })
 }
 
 const deleteMenu = (filename: string) => {
@@ -425,6 +439,7 @@ const priorityIndexes = new Set<number>()
 let rowObserver: IntersectionObserver | null = null
 let bottomObserver: IntersectionObserver | null = null
 const endSentinelRef = ref<HTMLElement | null>(null)
+let fullscreenChangeHandler: ((this: Document, ev: Event) => any) | null = null
 const hasMarkedRead = ref(false)
 const isAtBottom = () => {
   const el = scrollAreaRef.value
@@ -446,11 +461,9 @@ const onScrollCheck = () => {
     markChapterAsRead()
   }
 }
+const teleportEnabled = ref(true)
 const teleportTarget = computed(() =>
-  isFullscreen.value ? readerLayoutRef.value || '#main' : '#main',
-)
-const teleportReady = computed(() =>
-  isFullscreen.value ? !!readerLayoutRef.value : true,
+  isFullscreen.value ? '#fs-menu' : '#main',
 )
 
 const hasPrev = computed(() => {
@@ -471,7 +484,14 @@ const navigateChapter = (direction: 'prev' | 'next') => {
   if (mangaDetail.value) {
     if (targetIndex >= 0 && targetIndex < mangaDetail.value?.chapters.length) {
       const targetChapter = mangaDetail.value?.chapters[targetIndex]
-      router.push(`/read/${mangaId}/${targetChapter.id}`)
+      teleportEnabled.value = false
+      const exit = document.fullscreenElement
+        ? document.exitFullscreen().catch(() => {})
+        : Promise.resolve()
+      exit.finally(() => {
+        isFullscreen.value = false
+        router.push(`/read/${mangaId}/${targetChapter.id}`)
+      })
     }
   }
 }
@@ -506,6 +526,13 @@ watch(
 )
 onMounted(async () => {
   // load first time reader
+  try {
+    const isMax: boolean = await WailsWindow.IsMaximised()
+    wasMaximizedBefore.value = isMax
+    if (!isMax) {
+      await WailsWindow.Maximise()
+    }
+  } catch (_) {}
   await getMangaDetail()
   const currentChapter = getCurrentChapter()
   if (currentChapter) {
@@ -519,9 +546,10 @@ onMounted(async () => {
     }
   }
   refMenu.value
-  document.addEventListener('fullscreenchange', () => {
+  fullscreenChangeHandler = () => {
     isFullscreen.value = document.fullscreenElement === readerLayoutRef.value
-  })
+  }
+  document.addEventListener('fullscreenchange', fullscreenChangeHandler)
   if (rowObserver) {
     rowObserver.disconnect()
   }
