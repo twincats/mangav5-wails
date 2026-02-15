@@ -2,14 +2,14 @@
   <div>
     <div>
       <home-search
-        class="mb-3"
+        class="mb-1"
         v-model:search="search"
         v-model:dateModel="dateModel"
         v-if="breakpoints.greaterOrEqual('2xl').value"
       />
       <div class="grid grid-cols-6 xl:grid-cols-10 gap-2">
         <div
-          v-for="(m, index) in mangaList"
+          v-for="(m, index) in mangaView"
           class="relative group select-none rounded-1 transition-all duration-300"
           :class="{ 'today-highlight': isToday(m.download_time) }"
           @click="clickManga(m.manga_id)"
@@ -46,17 +46,21 @@
           </div>
         </div>
       </div>
-      <div class="mt-5 w-full absolute bottom-0 mb-5 flex justify-center">
+      <div
+        v-if="totalPages > 1"
+        class="mt-5 w-full absolute bottom-0 mb-5 flex justify-center"
+      >
         <n-pagination
-          v-model:page="pagination.page"
-          :page-count="pagination.pageSize"
+          v-model:page="currentPage"
+          :page-size="pageSize"
+          :item-count="totalItems"
         />
       </div>
     </div>
     <teleport to="#main">
       <context-menu ref="refMenu">
         <li class="disabled">Add Alternative</li>
-        <li>Convert Chapter Webp</li>
+        <li @click="search = ''">Convert Chapter Webp</li>
         <li>Compress Manga Chapter</li>
         <div class="divider"></div>
         <li class="red">Delete Manga</li>
@@ -75,15 +79,83 @@ import { breakpointsTailwind, useBreakpoints } from '@vueuse/core'
 const message = useMessage()
 const router = useRouter()
 const { refMenu, openContextMenu } = UseContextMenu()
-const pagination = reactive({
-  page: 1,
-  pageSize: 20,
-})
+const currentPage = ref(1)
+const pageSize = ref(12)
 const breakpoints = useBreakpoints(breakpointsTailwind)
 
 const search = ref('')
 const dateModel = ref(0)
 const mangaList = ref<LatestManga[]>([])
+const mangaView = computed<LatestManga[]>(() => {
+  let mangaView = mangaList.value
+  // filtered mangaList
+  if (search.value) {
+    // filter by search
+    mangaView = mangaList.value.filter(m =>
+      m.main_title.toLowerCase().includes(search.value.toLowerCase()),
+    )
+  } else if (dateModel.value > 0) {
+    // filter by date
+    const filterDate = getRelativeDate(dateModel.value)
+    mangaView = mangaList.value.filter(m =>
+      isSameDate(new Date(m.download_time), filterDate),
+    )
+  } else {
+    mangaView = mangaList.value
+  }
+  // pagination
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return mangaView.slice(start, end)
+})
+const totalItems = computed(() => {
+  if (search.value) {
+    return mangaList.value.filter(m =>
+      m.main_title.toLowerCase().includes(search.value.toLowerCase()),
+    ).length
+  } else if (dateModel.value > 0) {
+    const filterDate = getRelativeDate(dateModel.value)
+    return mangaList.value.filter(m =>
+      isSameDate(new Date(m.download_time), filterDate),
+    ).length
+  } else {
+    return mangaList.value.length
+  }
+})
+const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value))
+// const mangaView = computed<LatestManga[]>(() => {
+//   const r = repeatArray(mangaList.value, 5)
+watch(totalPages, tp => {
+  const maxPage = tp > 0 ? tp : 1
+  if (currentPage.value > maxPage) {
+    currentPage.value = maxPage
+  }
+})
+// const mangaView = computed<LatestManga[]>(() => {
+//   const r = repeatArray(mangaList.value, 5)
+//   const start = (currentPage.value - 1) * pageSize.value
+//   const end = start + pageSize.value
+//   return r.slice(start, end)
+// })
+watch(search, v => {
+  if (v) {
+    dateModel.value = 0
+  }
+})
+watch(dateModel, v => {
+  if (v > 0) {
+    search.value = ''
+  }
+})
+const is2xlUp = breakpoints.greaterOrEqual('2xl')
+watch(
+  is2xlUp,
+  b => {
+    pageSize.value = b ? 30 : 12
+  },
+  { immediate: true },
+)
+
 const fetchMangaList = async () => {
   try {
     mangaList.value = await DatabaseService.GetLatestManga()
@@ -115,6 +187,20 @@ const isToday = (date_string: string) => {
   )
 }
 
+function getRelativeDate(n: number) {
+  const date = new Date() // sekarang
+  date.setDate(date.getDate() - (n - 1))
+  return date
+}
+
+function isSameDate(d1: Date, d2: Date) {
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  )
+}
+
 const formatter = new Intl.DateTimeFormat('en-GB', {
   day: '2-digit',
   month: '2-digit',
@@ -122,6 +208,13 @@ const formatter = new Intl.DateTimeFormat('en-GB', {
 const formatDate = (date_string: string) => {
   const date = new Date(date_string)
   return formatter.format(date)
+}
+function repeatArray<T>(arr: T[], times: number): T[] {
+  const result: T[] = []
+  for (let i = 0; i < times; i++) {
+    result.push(...arr)
+  }
+  return result
 }
 </script>
 

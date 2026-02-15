@@ -227,7 +227,7 @@ const downloadOneChapter = async (chapterId: string) => {
       }
     }
 
-    // save chapter
+    // save or update chapter (unique per manga_id + chapter_number)
     if (mangaIdDb.value !== 0 && chapterInfo) {
       const c = new Chapter()
       c.manga_id = mangaIdDb.value
@@ -241,7 +241,18 @@ const downloadOneChapter = async (chapterId: string) => {
       c.is_compressed = 0
 
       try {
-        await DatabaseService.CreateChapter(c)
+        const chapters = await DatabaseService.GetChaptersByMangaID(
+          mangaIdDb.value,
+        )
+        const existing = chapters.find(
+          ch => Number(ch.chapter_number) === c.chapter_number,
+        )
+        if (existing) {
+          c.id = existing.id
+          await DatabaseService.UpdateChapter(c)
+        } else {
+          await DatabaseService.CreateChapter(c)
+        }
       } catch (err) {
         message.error('Failed to save chapter ' + chapterInfo?.chapter)
         console.error(err)
