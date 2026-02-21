@@ -7,6 +7,7 @@ import {
   HomeFilled,
   SettingsFilled,
   DownloadFilled,
+  ArticleRound,
 } from '@vicons/material'
 import { NIcon } from 'naive-ui'
 import { h, ref } from 'vue'
@@ -47,6 +48,11 @@ const headerMenu = [
     key: 'settings',
     icon: renderIcon(SettingsFilled),
   },
+  {
+    label: 'Docs',
+    key: 'docs',
+    icon: renderIcon(ArticleRound),
+  },
 ]
 
 const handleHeaderMenu = (key: string) => {
@@ -54,6 +60,8 @@ const handleHeaderMenu = (key: string) => {
     router.push('/')
   } else if (key === 'settings') {
     router.push('/settings')
+  } else if (key === 'docs') {
+    router.push('/docs')
   } else if (key === 'download') {
     router.push('/download')
   }

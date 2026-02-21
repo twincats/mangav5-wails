@@ -1,6 +1,7 @@
-## Pengaturan Scraping di Halaman Settings
+# Pengaturan Scraping di Halaman Settings
 
 Halaman **Settings** digunakan untuk:
+
 - Menambahkan aturan scraping (site rule) untuk berbagai website manga
 - Menguji apakah aturan sudah bekerja dengan benar
 - Menyimpan dan memuat kembali aturan yang sudah dibuat
@@ -20,7 +21,7 @@ Halaman Settings terbagi menjadi beberapa bagian:
 - Modal **Load Rules** (memilih rule yang sudah tersimpan)
 - Dialog pengaturan folder download manga
 
-Setiap bagian dijelaskan di bawah.
+Setiap baris dijelaskan di bawah.
 
 ---
 
@@ -94,12 +95,12 @@ Di baris kedua terdapat beberapa kolom:
 
 Di sisi kanan baris kedua terdapat:
 
-6. **Tombol Set Config Download Manga Directory**
+1. **Tombol Set Config Download Manga Directory**
    - Membuka dialog untuk mengatur folder utama tempat manga akan disimpan.
    - Masukkan path folder di komputer Anda (misalnya `D:\Manga`).
    - Folder ini akan digunakan oleh fitur download utama di halaman lain.
 
-7. **Tombol Clear (ikon penghapus)**
+2. **Tombol Clear (ikon penghapus)**
    - Mengosongkan semua input dan editor.
    - Berguna ketika Anda ingin membuat rule baru dari nol.
 
@@ -153,6 +154,7 @@ Saat klik **Load Rules**, akan muncul dialog berisi daftar rule yang sudah tersi
   - Menutup modal dan kembali ke halaman utama Settings.
 
 Ini memudahkan Anda:
+
 - Berpindah antar situs tanpa perlu mengetik ulang rule.
 - Mengedit rule lama jika situs mengalami perubahan.
 
@@ -170,6 +172,7 @@ Tombol dengan ikon **PlaylistAddFilled** di sisi kanan baris kedua membuka dialo
 3. Klik **Confirm** untuk menyimpan.
 
 Setelah disimpan:
+
 - Folder ini akan dipakai sebagai lokasi utama penyimpanan manga oleh fitur download di halaman lain.
 - Anda tetap bisa mengubahnya lagi jika perlu.
 
@@ -227,6 +230,7 @@ Setelah langkah-langkah ini, Anda bisa berpindah ke halaman **Download**, memili
     - Ikon Manga Rule dan Chapter Rule sudah hijau.
 
 Dengan memahami bagian-bagian di atas, pengguna akhir dapat:
+
 - Memilih, menguji, dan memakai scraping rule dengan aman
 - Tanpa perlu memahami detail teknis seperti schema JSON atau logika internal aplikasi.
 
@@ -253,6 +257,7 @@ Setiap situs manga yang didukung aplikasi umumnya membutuhkan:
      - Daftar URL gambar per halaman dalam satu chapter.
 
 Kedua rule ini ditulis dalam format JSON dan dikerjakan di tab:
+
 - **Manga Rule** (untuk halaman detail manga)
 - **Chapter Rule** (untuk halaman baca chapter)
 
@@ -326,6 +331,7 @@ Secara garis besar, Manga Rule membutuhkan:
     - `time` → tanggal/waktu rilis (jika ada).
 
 Contoh pola umum:
+
 - Gunakan selector pada elemen list chapter (misal `.chapter-item` atau `.chapters li`).
 - Di setiap item, ambil:
   - `href` link chapter untuk `chapter_id`.
@@ -346,6 +352,7 @@ Tujuan field `pages` adalah menghasilkan list URL gambar yang berurutan:
   - Pastikan field `pages` mengambil dari hasil API (melalui `from` dan `path` jika menggunakan JSON).
 
 Yang penting untuk aplikasi:
+
 - Hasil akhirnya harus berupa:
   - `pages: ["https://.../page1.jpg", "https://.../page2.jpg", ...]`.
 
@@ -380,6 +387,7 @@ Untuk pengembangan atau debugging rule:
    - Uji di halaman **Download** dengan URL yang sama.
 
 Jika di kemudian hari situs berubah:
+
 - Kembali ke Settings → **Load Rules** → pilih situs yang ingin diperbaiki.
 - Update selector / struktur rule.
 - Uji lagi dengan URL contoh yang sama.
@@ -390,6 +398,7 @@ Jika di kemudian hari situs berubah:
 ## 10. Penjelasan Lengkap Fitur `extract` dan Tipe `type`
 
 Bagian ini fokus ke cara konfigurasi **field di dalam `extract`**, karena di sinilah Anda mengatur:
+
 - Apa yang diambil dari halaman
 - Dari mana sumber datanya
 - Bagaimana hasilnya dibentuk (satu nilai atau list, plain text atau hasil regex, dll)
@@ -459,6 +468,7 @@ Field umum yang sering dipakai:
 `type: "css"` adalah tipe yang paling umum dipakai.
 
 Kegunaan:
+
 - Mengambil data dari HTML menggunakan selector CSS:
   - Text di dalam elemen
   - Nilai atribut (href, src, title, dll)
@@ -475,6 +485,7 @@ Pola dasar:
 ```
 
 Artinya:
+
 - Cari elemen yang cocok dengan `h1.manga-title`.
 - Ambil teksnya.
 - Trim spasi di kiri kanan.
@@ -491,6 +502,7 @@ Contoh lain untuk mengambil link:
 ```
 
 Jika dipakai di dalam field `chapters` yang `multiple: true`:
+
 - Untuk setiap elemen `.chapter-item`, ambil `<a>` di dalamnya.
 - Dari `<a>`, ambil atribut `href`.
 
@@ -516,6 +528,7 @@ Untuk membaca JSON, aplikasi menggunakan **GJSON** (library Go).
 Artinya, nilai `path` di sini mengikuti **GJSON path syntax**.
 
 Field tambahan penting:
+
 - `path` (wajib jika `type: "json"`)
   - Menentukan lokasi data di dalam struktur JSON dengan gaya GJSON.
 
@@ -566,6 +579,7 @@ Contoh path yang valid:
   - `chapters.#(language=="en").id`
 
 Operator yang bisa dipakai di dalam `#(...)` antara lain:
+
 - `==`, `!=`, `<`, `<=`, `>`, `>=`
 - `%` (like) dan `!%` (not like) untuk pencocokan sederhana.
 
@@ -630,6 +644,7 @@ Contoh sederhana:
 ```
 
 Artinya:
+
 - Ambil response dari API step dengan `id: "step1"`.
 - Dari JSON tersebut, baca `data.title` memakai path GJSON.
 
@@ -646,6 +661,7 @@ Jika data berupa list:
 ```
 
 Artinya:
+
 - Ambil `data.pages` dari JSON.
 - Asumsinya sudah berupa array string (URL gambar).
 
@@ -654,6 +670,7 @@ Artinya:
 Dipakai untuk membentuk string baru dari beberapa field lain atau dari nilai yang sudah diambil.
 
 Field tambahan penting:
+
 - `template` (wajib jika `type: "template"`)
 
 Polanya biasanya seperti:
@@ -667,9 +684,11 @@ Polanya biasanya seperti:
 ```
 
 Contoh kegunaan:
+
 - Menggabungkan judul dengan bahasa, chapter number dengan judul, dsb.
 
 Catatan:
+
 - Detil penggantian placeholder tergantung implementasi di backend, tetapi konsepnya Anda menyusun string dari nama field yang sudah ada.
 
 ### 10.5. Tipe `type: "text"`
@@ -677,6 +696,7 @@ Catatan:
 Dipakai ketika Anda ingin mengisi field dengan teks **statis**.
 
 Field tambahan penting:
+
 - `text` (wajib jika `type: "text"`)
 
 Contoh:
@@ -700,6 +720,7 @@ Atau untuk bahasa:
 ```
 
 Kegunaan:
+
 - Mengisi nilai yang tidak berubah-ubah antar item, misalnya:
   - Nama grup kalau situs tidak menampilkan grup per chapter.
   - Bahasa default situs.
@@ -707,6 +728,7 @@ Kegunaan:
 ### 10.6. Field `multiple` dan `children`
 
 `multiple` dan `children` sangat penting untuk field yang menghasilkan daftar objek, seperti:
+
 - `chapters` di Manga Rule
 - `pages` (jika ingin struktur kompleks di masa depan)
 
@@ -750,12 +772,14 @@ Contoh pola `chapters`:
 ```
 
 Cara bacanya:
+
 - `selector: ".chapter-item"` → cari semua elemen chapter di halaman.
 - `multiple: true` → tiap elemen akan menjadi satu objek dalam array `chapters`.
 - `children`:
   - Menjelaskan bagaimana mengisi properti di dalam setiap chapter.
 
 Aplikasi mengharapkan:
+
 - Untuk Manga Rule, field `chapters` memiliki minimal child:
   - `chapter_id`, `chapter`, `group_name`, `language`, `time`.
 
@@ -791,6 +815,7 @@ Kemudian di `extract`:
 ```
 
 Artinya:
+
 - Ambil data dari response step1.
 - Baca field `data.title` di JSON.
 
@@ -821,6 +846,7 @@ Contoh:
 ```
 
 Artinya:
+
 - Ambil semua `.chapter-item`.
 - Singkirkan yang mengandung teks `"Bonus"` (karena `filter_mode: "not"`).
 
@@ -856,6 +882,7 @@ Ringkasan kapan memakai tipe apa:
   - Contoh: bahasa `"id"`, nama grup default, dsb.
 
 Dengan memahami kombinasi:
+
 - `type`
 - `selector` / `path`
 - `multiple`

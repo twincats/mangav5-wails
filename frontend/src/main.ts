@@ -8,5 +8,7 @@ import 'vfonts/Lato.css'
 import 'vfonts/FiraCode.css'
 // Unocss
 import 'virtual:uno.css'
+// Highlight.js styles
+import 'highlight.js/styles/vs2015.css'
 
 createApp(App).use(router).mount('#app')

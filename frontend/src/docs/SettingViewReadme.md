@@ -1,6 +1,9 @@
-## SettingsView – Dokumentasi Scraping Rule
+<!-- markdownlint-disable-all -->
+
+# SettingsView – Dokumentasi Scraping Rule
 
 File terkait:
+
 - [SettingsView.vue](file:///f:/Development/Go/wails3/mangav5-wails3/frontend/src/views/SettingsView.vue)
 - [MangaRuleSchema.json](file:///f:/Development/Go/wails3/mangav5-wails3/frontend/src/assets/MangaRuleSchema.json)
 - [ChapterRuleSchema.json](file:///f:/Development/Go/wails3/mangav5-wails3/frontend/src/assets/ChapterRuleSchema.json)
@@ -8,6 +11,7 @@ File terkait:
 - [scrape.ts (tipe hasil scrape)](file:///f:/Development/Go/wails3/mangav5-wails3/frontend/src/type/scrape.ts)
 
 Dokumentasi ini menjelaskan:
+
 - Cara memakai halaman **Settings** untuk membuat dan menguji scraping rule
 - Struktur lengkap JSON **Manga Rule** dan **Chapter Rule**
 - Validasi yang dilakukan aplikasi
@@ -41,6 +45,7 @@ Halaman Settings menyediakan 3 area utama:
   - Tab **Scrape Result** → menampilkan JSON hasil `ScraperService.Scrape`
 
 Tambahan:
+
 - Tombol **Set Config Download Manga Directory** untuk mengatur direktori utama download manga (`manga_directory`).
 - Modal **Load Scraping Rules** yang menampilkan daftar rule dari database dan mengisi form saat dipilih.
 
@@ -92,6 +97,7 @@ export interface ChapterData {
 ```
 
 Interpretasi:
+
 - `title` → judul manga
 - `cover` → URL cover utama
 - `chapters` → daftar chapter yang akan muncul di DownloadView
@@ -110,6 +116,7 @@ export interface ChapterPages {
 ```
 
 `pages` berisi daftar URL gambar halaman dalam satu chapter. Tipe ini digunakan:
+
 - Di SettingsView untuk test tombol **Download** (cek validitas via `isValidPages`)
 - Di DownloadView untuk proses download sebenarnya.
 
@@ -205,6 +212,7 @@ Dipakai jika `strategy` adalah `static` atau `browser`. Schema:
   - Override header HTTP (User-Agent, cookie, dll).
 
 Aturan schema:
+
 - Jika `strategy = "api"` → `api` wajib, `entry` opsional.
 - Jika `strategy = "static"` atau `"browser"` → `entry` wajib.
 - Jika `strategy = "auto"` → wajib punya minimal salah satu: `api` atau `entry`.
@@ -268,6 +276,7 @@ Struktur:
 Setiap item dalam `extract` mengikuti definisi `fieldRule`:
 
 Field umum:
+
 - `name` (string, required)
   - Nama field yang akan muncul di hasil (misal `title`, `cover`, `chapters`, `pages`).
 - `type` (string, required)
@@ -296,6 +305,7 @@ Field umum:
   - Digunakan untuk field kompleks (misalnya `chapters` sebagai array objek).
 
 Khusus:
+
 - Jika `type = "json"` → `path` wajib.
 - Jika `type = "template"` → `template` wajib.
 - Jika `type = "text"` → `text` wajib.
@@ -305,6 +315,7 @@ Khusus:
 ## 6. Aturan Khusus Manga Rule
 
 Selain schema JSON, Manga Rule juga divalidasi di frontend:
+
 - Fungsi: `validateMangaRule` di [validationHelpers.ts](file:///f:/Development/Go/wails3/mangav5-wails3/frontend/src/utils/validationHelpers.ts)
 - Validasi tambahan:
   - Field `extract` harus mengandung **minimal** rule dengan `name`:
@@ -419,6 +430,7 @@ watchDebounced(
 ```
 
 Artinya:
+
 - Saat Manga Rule JSON valid dan berubah:
   - Field `domains_json` otomatis diisi dengan `JSON.stringify(domains)`.
   - Field `name` dan `site_key` otomatis diisi dari `site`.
@@ -447,11 +459,13 @@ const readyToSave = computed(() => {
 ```
 
 Syarat:
+
 - `site_key`, `name`, `domains_json` tidak kosong.
 - `manga_rule_json` dan `chapter_rule_json` terisi.
 - Validasi JSON keduanya **lolos** (ikon hijau).
 
 Saat klik **Save Rules**:
+
 - Data form diubah menjadi instance `ScrapingRule` dan disimpan via `DatabaseService.SaveScrapingRule`.
 - Setelah sukses:
   - `clearInput()` dipanggil untuk reset form.
@@ -489,10 +503,12 @@ export async function getDownloadDir(
 ```
 
 Rekomendasi:
+
 - Set `manga_directory` ke lokasi yang stabil dan punya ruang cukup.
 - Hindari path dengan karakter aneh; fungsi `safeWindowsDirectoryName` sudah membantu sanitasi nama folder berdasarkan judul.
 
 Catatan:
+
 - Tombol **Download** di SettingsView hanya untuk **test cepat** dengan path statis (di kode saat ini masih hardcoded).
 - Proses download utama menggunakan konfigurasi `manga_directory` di DownloadView.
 
@@ -602,7 +618,7 @@ Monaco editor sudah dikonfigurasi dengan snippet bawaan (lihat `scrapingRuleSnip
   - Uji ulang dengan URL yang sama.
 
 Dengan mengikuti dokumentasi ini, Anda bisa:
+
 - Menambahkan scraping rule untuk situs baru.
 - Menyesuaikan rule jika struktur situs berubah.
 - Memastikan rule valid sebelum dipakai di proses download utama.
-

@@ -65,6 +65,12 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/docs/:docId?',
+    name: 'docs',
+    component: () => import('../views/docs/view.vue'),
+    props: route => ({ docId: route.params.docId }),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('../views/NotFoundView.vue'),
