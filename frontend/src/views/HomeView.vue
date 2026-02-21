@@ -2,7 +2,7 @@
   <div>
     <div>
       <home-search
-        class="mb-1"
+        class="mb-1 w-3/5"
         v-model:search="search"
         v-model:dateModel="dateModel"
         v-if="breakpoints.greaterOrEqual('2xl').value"
@@ -56,6 +56,15 @@
           :item-count="totalItems"
         />
       </div>
+      <n-modal v-model:show="modalSearch">
+        <div class="min-h-screen flex items-center justify-center">
+          <home-search
+            class="mb-1"
+            v-model:search="search"
+            v-model:dateModel="dateModel"
+          />
+        </div>
+      </n-modal>
     </div>
     <teleport to="#main">
       <context-menu ref="refMenu">
@@ -74,7 +83,7 @@ import { DatabaseService } from '../../bindings/mangav5/services'
 import { LatestManga } from '../../bindings/mangav5/internal/models'
 import { ImagePath } from '@/utils/filePathHelper'
 import { UseContextMenu } from '@/utils/contextMenuHelper'
-import { breakpointsTailwind, useBreakpoints } from '@vueuse/core'
+import { breakpointsTailwind, useBreakpoints, useMagicKeys } from '@vueuse/core'
 
 const message = useMessage()
 const router = useRouter()
@@ -83,6 +92,8 @@ const currentPage = ref(1)
 const pageSize = ref(12)
 const breakpoints = useBreakpoints(breakpointsTailwind)
 
+const { ctrl, f } = useMagicKeys()
+const modalSearch = ref(false)
 const search = ref('')
 const dateModel = ref(0)
 const mangaList = ref<LatestManga[]>([])
@@ -137,6 +148,12 @@ watch(totalPages, tp => {
 //   const end = start + pageSize.value
 //   return r.slice(start, end)
 // })
+
+watchEffect(() => {
+  if (ctrl.value && f.value && !breakpoints.greaterOrEqual('2xl').value) {
+    modalSearch.value = true
+  }
+})
 watch(search, v => {
   if (v) {
     dateModel.value = 0
@@ -152,6 +169,7 @@ watch(
   is2xlUp,
   b => {
     pageSize.value = b ? 30 : 12
+    modalSearch.value = false
   },
   { immediate: true },
 )

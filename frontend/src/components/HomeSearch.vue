@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-dark-600 rounded-1 p-2 text-white w-screen-lg text-center mx-auto mb-2 grid grid-rows-2 gap-2"
+    class="bg-dark-600 rounded-1 p-2 text-white text-center mx-auto mb-2 grid grid-cols-1 gap-2"
   >
     <div>
       <n-input-group>
@@ -11,15 +11,15 @@
           @blur="commitFromEvent"
           @keyup.enter="commitFromEvent"
         />
-        <n-button tertiary type="primary">
+        <n-button tertiary type="primary" @click="emit('clickClear')">
           <template #icon><ClearOutlined /></template>
         </n-button>
-        <n-button tertiary type="primary">
+        <n-button tertiary type="primary" @click="emit('clickSearch')">
           <template #icon><SearchOutlined /></template>
         </n-button>
       </n-input-group>
     </div>
-    <div>
+    <div class="overflow-hidden">
       <n-radio-group
         v-model:value="dateModel"
         name="radiobuttongroup1"
@@ -41,6 +41,11 @@ import { SearchOutlined, ClearOutlined } from '@vicons/material'
 interface ListDate {
   [index: number]: string
 }
+
+const emit = defineEmits<{
+  clickClear: []
+  clickSearch: []
+}>()
 
 const search = defineModel<string>('search', { required: true, default: '' })
 const dateModel = defineModel<number>('dateModel', {
