@@ -122,7 +122,7 @@ import { DownloadProgress } from '@/type/download'
 import { MangaData, ChapterData, ChapterPages } from '@/type/scrape'
 import { NButton, NIcon, NTag } from 'naive-ui'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
-import { Window, Events } from '@wailsio/runtime'
+import { Window, Events, Clipboard } from '@wailsio/runtime'
 import { watchDebounced, useEventListener } from '@vueuse/core'
 import {
   getDownloadDir,
@@ -300,13 +300,33 @@ const downloadMultiple = async () => {
 }
 
 const fetchScrapeManga = async () => {
-  if (!selectedSiteKey.value) {
-    message.error('Please select a site rule')
-    return
-  }
   if (!downloadUrl.value) {
+    const clip = await Clipboard.Text()
+    if (clip && isValidUrl(clip)) {
+      downloadUrl.value = clip.trim()
+    } else {
+      downloadUrl.value = ''
+      message.error('Please enter a download URL')
+      return
+    }
+  }
+  downloadUrl.value = downloadUrl.value.trim()
+  if (!isValidUrl(downloadUrl.value)) {
+    downloadUrl.value = ''
     message.error('Please enter a download URL')
     return
+  }
+  if (!selectedSiteKey.value) {
+    if (listScrapeRuleDb.value.length === 0) {
+      await loadListScrapeRuleDb()
+    }
+    const siteKey = inferSiteKeyFromUrl(downloadUrl.value)
+    if (siteKey) {
+      selectedSiteKey.value = siteKey
+    } else {
+      message.error('Please select a site rule')
+      return
+    }
   }
   try {
     const rule = await getScrapeRule(selectedSiteKey.value)
@@ -514,15 +534,12 @@ watchDebounced(
   newVal => {
     if (newVal) {
       try {
-        const url = new URL(newVal)
-        console.info(`url.hostname = ${url.hostname}`)
-        const siteKey = listScrapeRuleDb.value.find(rule =>
-          JSON.parse(rule.domains_json).includes(url.hostname),
-        )?.site_key
-        if (siteKey) {
+        if (!isValidUrl(newVal)) {
+          return
+        }
+        const siteKey = inferSiteKeyFromUrl(newVal)
+        if (siteKey && siteKey !== selectedSiteKey.value) {
           selectedSiteKey.value = siteKey
-        } else {
-          message.error('Failed to fetch manga')
         }
       } catch (error) {}
     }
@@ -540,14 +557,69 @@ onBeforeRouteLeave((_to, _from, next) => {
 
 /* ======== HELPER FUNCTION ========== */
 useEventListener(document, 'paste', e => {
+  const target = e.target as HTMLElement | null
+  if (
+    target &&
+    (target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable)
+  ) {
+    return
+  }
+
+  const activeElement = document.activeElement as HTMLElement | null
+  if (
+    activeElement &&
+    (activeElement.tagName === 'INPUT' ||
+      activeElement.tagName === 'TEXTAREA' ||
+      activeElement.isContentEditable)
+  ) {
+    return
+  }
+
   const clipboardData = e.clipboardData
   if (clipboardData) {
     const text = clipboardData.getData('text')
-    if (text) {
-      downloadUrl.value = text
+    if (text && isValidUrl(text)) {
+      downloadUrl.value = text.trim()
     }
   }
 })
+
+function isValidUrl(text: string): boolean {
+  try {
+    const trimmed = text.trim()
+    if (!/^https?:\/\//i.test(trimmed)) {
+      return false
+    }
+    new URL(trimmed)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function inferSiteKeyFromUrl(text: string): string | null {
+  const trimmed = text.trim()
+  if (!isValidUrl(trimmed)) return null
+
+  let hostname = ''
+  try {
+    hostname = new URL(trimmed).hostname
+  } catch {
+    return null
+  }
+
+  const matchedRule = listScrapeRuleDb.value.find(rule => {
+    try {
+      return JSON.parse(rule.domains_json).includes(hostname)
+    } catch {
+      return false
+    }
+  })
+
+  return matchedRule?.site_key ?? null
+}
 
 const findChapterByChapterId = (chapterId: string) => {
   return chapterData.value.find(chap => chap.chapter_id === chapterId)

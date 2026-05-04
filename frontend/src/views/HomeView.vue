@@ -26,8 +26,12 @@
               style: 'width: 100%; height: 250px; display: block;',
             }"
           />
+          <div class="today-overlay" />
+          <div v-if="isToday(m.download_time)" class="today-ribbon">
+            <span>NEW</span>
+          </div>
           <div
-            class="absolute top-0 right-0 text-center text-white rounded-bl-1 rounded-tr-1 bg-black bg-opacity-50 px-1"
+            class="absolute top-2 right-2 z-10 whitespace-nowrap text-white px-2 py-0.5 text-[11px] leading-none font-semibold rounded-full bg-black/35 backdrop-blur-sm border border-white/10"
           >
             {{ formatDate(m.download_time) }}
           </div>
@@ -249,11 +253,53 @@ function repeatArray<T>(arr: T[], times: number): T[] {
 }
 
 .today-highlight {
-  box-shadow: 0 0 10px 2px rgba(255, 165, 0, 0.6); /* Orange glow */
-  border: 2px solid rgba(255, 165, 0, 0.8); /* Solid orange border */
-  transform: scale(1.02); /* Sedikit membesar */
+  transform: scale(1.02);
   z-index: 10;
   transition: all 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.today-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.today-ribbon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.today-ribbon span {
+  position: absolute;
+  top: 10px;
+  left: -36px;
+  width: 130px;
+  padding: 6px 0;
+  transform: rotate(-45deg);
+  text-align: center;
+  font-weight: 900;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  color: #ffffff;
+  background: #ff1744;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
+.today-highlight .today-overlay {
+  opacity: 1;
 }
 
 /* Animasi opsional: pulse halus */
