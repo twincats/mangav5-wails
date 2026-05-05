@@ -13,7 +13,7 @@
           class="relative group select-none rounded-1 transition-all duration-300"
           :class="{ 'today-highlight': isToday(m.download_time) }"
           @click="clickManga(m.manga_id)"
-          @contextmenu.prevent="openContextMenu"
+          @contextmenu="openContextMenu($event, m)"
         >
           <n-image
             class="rounded-1 block"
@@ -72,11 +72,35 @@
     </div>
     <teleport to="#main">
       <context-menu ref="refMenu">
-        <li class="disabled">Add Alternative</li>
-        <li @click="search = ''">Convert Chapter Webp</li>
-        <li>Compress Manga Chapter</li>
-        <div class="divider"></div>
-        <li class="red">Delete Manga</li>
+        <template #default="{ item }">
+          <li class="disabled">Add Alternative</li>
+          <li
+            :class="item ? '' : 'disabled'"
+            @click="
+              () => {
+                if (!item) return
+                search = ''
+                closeContextMenu()
+              }
+            "
+          >
+            Convert Chapter Webp
+          </li>
+          <li :class="item ? '' : 'disabled'">Compress Manga Chapter</li>
+          <div class="divider"></div>
+          <li
+            :class="item ? 'red' : 'disabled'"
+            @click="
+              () => {
+                if (!item) return
+                closeContextMenu()
+                confirmDeleteManga(item)
+              }
+            "
+          >
+            Delete Manga
+          </li>
+        </template>
       </context-menu>
     </teleport>
   </div>
@@ -90,8 +114,9 @@ import { UseContextMenu } from '@/utils/contextMenuHelper'
 import { breakpointsTailwind, useBreakpoints, useMagicKeys } from '@vueuse/core'
 
 const message = useMessage()
+const dialog = useDialog()
 const router = useRouter()
-const { refMenu, openContextMenu } = UseContextMenu()
+const { refMenu, openContextMenu, closeContextMenu } = UseContextMenu()
 const currentPage = ref(1)
 const pageSize = ref(12)
 const breakpoints = useBreakpoints(breakpointsTailwind)
@@ -193,6 +218,33 @@ const clickManga = (manga_id: number) => {
 
 const clickChapter = (manga_id: number, chapter_id: number) => {
   router.push(`/read/${manga_id}/${chapter_id}`)
+}
+
+const confirmDeleteManga = (m: LatestManga) => {
+  dialog.error({
+    title: 'Confirm Delete Manga',
+    content: `Delete "${m.main_title}"?`,
+    positiveText: 'Delete',
+    negativeText: 'Cancel',
+    maskClosable: false,
+    negativeButtonProps: {
+      color: 'grey',
+    },
+    onPositiveClick: async () => {
+      try {
+        await DatabaseService.DeleteManga(m.manga_id)
+        message.success(`Deleted "${m.main_title}"`)
+        await fetchMangaList()
+      } catch (error) {
+        message.error(`Failed to delete manga: ${error}`)
+      } finally {
+        closeContextMenu()
+      }
+    },
+    onNegativeClick: () => {
+      closeContextMenu()
+    },
+  })
 }
 
 onMounted(() => {

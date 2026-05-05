@@ -50,6 +50,10 @@ export function DeleteManga(id: number): $CancellablePromise<void> {
     return $Call.ByID(2064937506, id);
 }
 
+export function DeleteMangaFull(id: number): $CancellablePromise<void> {
+    return $Call.ByID(3297606139, id);
+}
+
 export function DeleteScrapingRule(siteKey: string): $CancellablePromise<void> {
     return $Call.ByID(79211419, siteKey);
 }

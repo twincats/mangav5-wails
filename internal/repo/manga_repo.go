@@ -204,7 +204,7 @@ func (r *MangaRepo) GetAllStatuses(ctx context.Context) ([]models.MangaStatus, e
 // =====================
 func (r *MangaRepo) Delete(ctx context.Context, id int64) error {
 	_, err := r.DB.ExecContext(ctx, `
-		DELETE FROM manga WHERE id = ?
+		DELETE FROM manga WHERE manga_id = ?
 	`, id)
 	return err
 }

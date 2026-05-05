@@ -5,7 +5,11 @@ import (
 	"errors"
 	"mangav5/internal/models"
 	"mangav5/internal/repo"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 type DatabaseService struct {
@@ -61,7 +65,58 @@ func (s *DatabaseService) UpdateManga(ctx context.Context, manga models.Manga) e
 }
 
 func (s *DatabaseService) DeleteManga(ctx context.Context, id int64) error {
-	return s.mangaRepo.Delete(ctx, id)
+	return s.DeleteMangaFull(ctx, id)
+}
+
+func (s *DatabaseService) DeleteMangaFull(ctx context.Context, id int64) error {
+	if id <= 0 {
+		return errors.New("invalid manga id")
+	}
+
+	manga, err := s.mangaRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if manga == nil {
+		return errors.New("manga not found")
+	}
+
+	tx, err := s.mangaRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM chapters WHERE manga_id = ?`, id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM alternative_titles WHERE manga_id = ?`, id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM manga WHERE manga_id = ?`, id); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	mangaDir, err := s.GetConfigValue(ctx, "manga_directory")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(mangaDir) == "" {
+		return errors.New("manga directory not configured")
+	}
+
+	targetDir := filepath.Join(mangaDir, safeWindowsDirectoryName(manga.MainTitle, 120))
+	if _, err := os.Stat(targetDir); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	return os.RemoveAll(targetDir)
 }
 
 // AddAlternativeTitle adds an alternative title to a manga
@@ -190,4 +245,44 @@ func (s *DatabaseService) GetConfig(ctx context.Context, key string) (*models.Co
 // GetConfigValue retrieves just the value string for a given key
 func (s *DatabaseService) GetConfigValue(ctx context.Context, key string) (string, error) {
 	return s.configRepo.GetValue(ctx, key)
+}
+
+var windowsReservedNames = regexp.MustCompile(`^(con|prn|aux|nul|com[1-9]|lpt[1-9])$`)
+var windowsIllegalChars = regexp.MustCompile(`[\/\\:*?"<>|]`)
+var windowsControlChars = regexp.MustCompile(`[\x00-\x1F\x7F]`)
+var underscoreRuns = regexp.MustCompile(`_+`)
+
+func safeWindowsDirectoryName(input string, maxLen int) string {
+	rep := "_"
+	if maxLen <= 0 {
+		maxLen = 120
+	}
+
+	s := strings.TrimSpace(input)
+	s = windowsControlChars.ReplaceAllString(s, " ")
+	s = strings.Join(strings.Fields(s), " ")
+	s = windowsIllegalChars.ReplaceAllString(s, rep)
+	s = strings.TrimLeft(s, ". ")
+	s = strings.TrimRight(s, ". ")
+	s = underscoreRuns.ReplaceAllString(s, rep)
+
+	if s == "" {
+		s = "untitled"
+	}
+	if windowsReservedNames.MatchString(strings.ToLower(s)) {
+		s = s + rep + "dir"
+	}
+
+	if utf8.RuneCountInString(s) > maxLen {
+		r := []rune(s)
+		if len(r) > maxLen {
+			r = r[:maxLen]
+		}
+		s = strings.TrimRight(string(r), ". -")
+		if s == "" {
+			s = "untitled"
+		}
+	}
+
+	return s
 }
