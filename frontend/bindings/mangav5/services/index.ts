@@ -5,12 +5,14 @@ import * as BrowserService from "./browserservice.js";
 import * as DatabaseService from "./databaseservice.js";
 import * as DownloadService from "./downloadservice.js";
 import * as FileService from "./fileservice.js";
+import * as ImageService from "./imageservice.js";
 import * as ScraperService from "./scraperservice.js";
 export {
     BrowserService,
     DatabaseService,
     DownloadService,
     FileService,
+    ImageService,
     ScraperService
 };
 
@@ -23,5 +25,7 @@ export {
     FieldRule,
     ScrapeResult,
     SiteRule,
-    WaitConfig
+    WaitConfig,
+    WebPBatchResult,
+    WebPConvertOptions
 } from "./models.js";

@@ -372,6 +372,101 @@ export class WaitConfig {
     }
 }
 
+export class WebPBatchResult {
+    "inputPath": string;
+    "outputPath": string;
+    "bytes": number;
+    "error"?: string;
+
+    /** Creates a new WebPBatchResult instance. */
+    constructor($$source: Partial<WebPBatchResult> = {}) {
+        if (!("inputPath" in $$source)) {
+            this["inputPath"] = "";
+        }
+        if (!("outputPath" in $$source)) {
+            this["outputPath"] = "";
+        }
+        if (!("bytes" in $$source)) {
+            this["bytes"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new WebPBatchResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): WebPBatchResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new WebPBatchResult($$parsedSource as Partial<WebPBatchResult>);
+    }
+}
+
+export class WebPConvertOptions {
+    "quality": number;
+    "lossless": boolean;
+    "effort": number;
+    "smartSubsample": boolean;
+    "resizeWidth": number;
+    "resizeHeight": number;
+    "allowUpscale": boolean;
+    "deleteSource": boolean;
+    "concurrency": number;
+    "overwrite": boolean;
+    "skipExisting": boolean;
+    "stopOnError": boolean;
+
+    /** Creates a new WebPConvertOptions instance. */
+    constructor($$source: Partial<WebPConvertOptions> = {}) {
+        if (!("quality" in $$source)) {
+            this["quality"] = 0;
+        }
+        if (!("lossless" in $$source)) {
+            this["lossless"] = false;
+        }
+        if (!("effort" in $$source)) {
+            this["effort"] = 0;
+        }
+        if (!("smartSubsample" in $$source)) {
+            this["smartSubsample"] = false;
+        }
+        if (!("resizeWidth" in $$source)) {
+            this["resizeWidth"] = 0;
+        }
+        if (!("resizeHeight" in $$source)) {
+            this["resizeHeight"] = 0;
+        }
+        if (!("allowUpscale" in $$source)) {
+            this["allowUpscale"] = false;
+        }
+        if (!("deleteSource" in $$source)) {
+            this["deleteSource"] = false;
+        }
+        if (!("concurrency" in $$source)) {
+            this["concurrency"] = 0;
+        }
+        if (!("overwrite" in $$source)) {
+            this["overwrite"] = false;
+        }
+        if (!("skipExisting" in $$source)) {
+            this["skipExisting"] = false;
+        }
+        if (!("stopOnError" in $$source)) {
+            this["stopOnError"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new WebPConvertOptions instance from a string or object.
+     */
+    static createFrom($$source: any = {}): WebPConvertOptions {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new WebPConvertOptions($$parsedSource as Partial<WebPConvertOptions>);
+    }
+}
+
 // Private type creation functions
 const $$createType0 = $Create.Map($Create.Any, $Create.Any);
 const $$createType1 = APIRequest.createFrom;

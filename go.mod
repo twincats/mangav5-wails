@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
+	github.com/cshum/vipsgen v1.3.9
 	github.com/go-resty/resty/v2 v2.17.1
 	github.com/go-rod/rod v0.116.2
 	github.com/klauspost/compress v1.18.0
