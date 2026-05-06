@@ -152,15 +152,21 @@ export function ListManga(limit: number, offset: number): $CancellablePromise<mo
     });
 }
 
+export function ListMangaBasic(): $CancellablePromise<models$0.MangaBasic[]> {
+    return $Call.ByID(1724791971).then(($result: any) => {
+        return $$createType21($result);
+    });
+}
+
 export function ListScrapingRules(): $CancellablePromise<models$0.ScrapingRule[]> {
     return $Call.ByID(2931394105).then(($result: any) => {
-        return $$createType20($result);
+        return $$createType22($result);
     });
 }
 
 export function ListScrapingRulesBasic(): $CancellablePromise<models$0.ScrapingRule[]> {
     return $Call.ByID(4162381753).then(($result: any) => {
-        return $$createType20($result);
+        return $$createType22($result);
     });
 }
 
@@ -226,4 +232,6 @@ const $$createType16 = $Create.Nullable($$createType15);
 const $$createType17 = models$0.ScrapingRule.createFrom;
 const $$createType18 = $Create.Nullable($$createType17);
 const $$createType19 = $Create.Array($$createType11);
-const $$createType20 = $Create.Array($$createType17);
+const $$createType20 = models$0.MangaBasic.createFrom;
+const $$createType21 = $Create.Array($$createType20);
+const $$createType22 = $Create.Array($$createType17);

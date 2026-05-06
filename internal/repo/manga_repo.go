@@ -131,6 +131,29 @@ func (r *MangaRepo) List(ctx context.Context, limit, offset int) ([]models.Manga
 	return result, nil
 }
 
+func (r *MangaRepo) ListBasic(ctx context.Context) ([]models.MangaBasic, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT manga_id, main_title
+		FROM manga
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.MangaBasic
+	for rows.Next() {
+		var m models.MangaBasic
+		if err := rows.Scan(&m.ID, &m.MainTitle); err != nil {
+			return nil, err
+		}
+		result = append(result, m)
+	}
+
+	return result, nil
+}
+
 // =====================
 // Update
 // =====================

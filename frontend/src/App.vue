@@ -44,6 +44,11 @@ const headerMenu = [
     icon: renderIcon(DownloadFilled),
   },
   {
+    label: 'Convert',
+    key: 'convert',
+    icon: renderIcon(ArticleRound),
+  },
+  {
     label: 'Settings',
     key: 'settings',
     icon: renderIcon(SettingsFilled),
@@ -62,6 +67,10 @@ const handleHeaderMenu = (key: string) => {
     router.push('/settings')
   } else if (key === 'docs') {
     router.push('/docs')
+  } else if (key === 'convert') {
+    router.push(`/convert`)
+  } else if (key === 'download') {
+    router.push('/download')
   } else if (key === 'download') {
     router.push('/download')
   }

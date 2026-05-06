@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="flex gap-2 items-center">
+    <div class="flex gap-2 items-center mb-2">
       <n-input-group>
         <n-input v-model:value="downloadUrl" placeholder="Enter download URL" />
         <n-button tertiary type="primary" @click="fetchScrapeManga">
@@ -23,50 +23,52 @@
         </template>
       </n-button>
     </div>
-    <div class="bg-dark-400 rounded-md p-2 my-2">
-      <div class="text-sm font-medium">Select site rule:</div>
-      <div class="bg-dark-500 p-2 rounded-md mt-1 overflow-auto">
-        <div class="min-h-[52.72px] flex items-center">
-          <n-radio-group v-model:value="selectedSiteKey" name="radiogroup">
-            <n-space>
-              <n-radio
-                v-for="site in listScrapeRule"
-                :key="site.id"
-                :value="site.site_key"
-                :label="site.name"
-              />
-            </n-space>
-          </n-radio-group>
+    <n-scrollbar style="max-height: calc(100vh - 160px)">
+      <div class="bg-dark-400 rounded-md p-2 mb-2">
+        <div class="text-sm font-medium">Select site rule:</div>
+        <div class="bg-dark-500 p-2 rounded-md mt-1 overflow-auto">
+          <div class="min-h-[52.72px] flex items-center">
+            <n-radio-group v-model:value="selectedSiteKey" name="radiogroup">
+              <n-space>
+                <n-radio
+                  v-for="site in listScrapeRule"
+                  :key="site.id"
+                  :value="site.site_key"
+                  :label="site.name"
+                />
+              </n-space>
+            </n-radio-group>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="bg-dark-400 rounded-md p-2 my-2 min-h-[100px]">
-      <n-h4 align-text>
-        <n-text type="primary">
-          {{ mangaData?.title }}
-        </n-text>
-      </n-h4>
-      <div v-if="selectedChapters.length > 0">
-        Download Chapters : {{ selectedChapters.length }} Chapter<br />
-        Selected Chapters : {{ selectedChapters.join(', ') }}
+      <div class="bg-dark-400 rounded-md p-2 my-2 min-h-[100px]">
+        <n-h4 align-text>
+          <n-text type="primary">
+            {{ mangaData?.title }}
+          </n-text>
+        </n-h4>
+        <div v-if="selectedChapters.length > 0">
+          Download Chapters : {{ selectedChapters.length }} Chapter<br />
+          Selected Chapters : {{ selectedChapters.join(', ') }}
+        </div>
       </div>
-    </div>
-    <div>
-      <n-data-table
-        :columns="columns"
-        :bordered="false"
-        :single-line="false"
-        :data="chapterData"
-        :row-key="rowKey"
-        :size="'small'"
-        :pagination="{
-          pageSize: 10,
-        }"
-        striped
-        v-model:checked-row-keys="checkedRowKeysRef"
-        :row-props="rowProps"
-      />
-    </div>
+      <div>
+        <n-data-table
+          :columns="columns"
+          :bordered="false"
+          :single-line="false"
+          :data="chapterData"
+          :row-key="rowKey"
+          :size="'small'"
+          :pagination="{
+            pageSize: 10,
+          }"
+          striped
+          v-model:checked-row-keys="checkedRowKeysRef"
+          :row-props="rowProps"
+        />
+      </div>
+    </n-scrollbar>
     <!-- modal progress -->
     <n-modal
       v-model:show="progressModal"
@@ -148,11 +150,12 @@ const chapterData = computed<ChapterData[]>(() => {
   return mangaData.value?.chapters || []
 })
 
+// auto Maximize window disabled => broken minimum size
 const wasMaximizedBefore = ref(false)
 Window.IsMaximised().then((isMax: boolean) => {
   wasMaximizedBefore.value = isMax
   if (!isMax) {
-    Window.Maximise()
+    // Window.Maximise()
   }
 })
 

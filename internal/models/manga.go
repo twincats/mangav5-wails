@@ -10,6 +10,11 @@ type Manga struct {
 	UpdatedAt   string `json:"updated_at"`
 }
 
+type MangaBasic struct {
+	ID        int64  `json:"id"`
+	MainTitle string `json:"main_title"`
+}
+
 type AlternativeTitle struct {
 	ID               int64  `json:"id"`
 	MangaID          int64  `json:"manga_id"`

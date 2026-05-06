@@ -56,6 +56,21 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/convert/:mangaId?',
+    name: 'convert',
+    component: () => import('../views/ConvertManagerView.vue'),
+    meta: {
+      title: 'Convert',
+    },
+    props: route => {
+      const raw = Array.isArray(route.params.mangaId)
+        ? route.params.mangaId[0]
+        : route.params.mangaId
+
+      return { mangaId: Number(raw) }
+    },
+  },
+  {
     path: '/settings',
     name: 'settings',
     component: () => import('../views/SettingsView.vue'),

@@ -374,14 +374,13 @@ const isFullscreen = ref(!!document.fullscreenElement)
 const toggleFullscreen = async () => {
   try {
     if (!document.fullscreenElement) {
-      const el = readerLayoutRef.value || document.documentElement
-      await el.requestFullscreen()
+      await document.documentElement.requestFullscreen()
     } else {
       await document.exitFullscreen()
     }
   } catch (_) {
   } finally {
-    isFullscreen.value = document.fullscreenElement === readerLayoutRef.value
+    isFullscreen.value = !!document.fullscreenElement
     closeContextMenu()
   }
 }
@@ -547,7 +546,7 @@ onMounted(async () => {
   }
   refMenu.value
   fullscreenChangeHandler = () => {
-    isFullscreen.value = document.fullscreenElement === readerLayoutRef.value
+    isFullscreen.value = !!document.fullscreenElement
   }
   document.addEventListener('fullscreenchange', fullscreenChangeHandler)
   if (rowObserver) {

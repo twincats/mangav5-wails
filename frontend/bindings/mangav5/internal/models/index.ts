@@ -7,6 +7,7 @@ export {
     Config,
     LatestManga,
     Manga,
+    MangaBasic,
     MangaDetail,
     MangaStatus,
     MangaWithAlt,

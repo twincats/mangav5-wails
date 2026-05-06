@@ -60,6 +60,10 @@ func (s *DatabaseService) ListManga(ctx context.Context, limit, offset int) ([]m
 	return s.mangaRepo.List(ctx, limit, offset)
 }
 
+func (s *DatabaseService) ListMangaBasic(ctx context.Context) ([]models.MangaBasic, error) {
+	return s.mangaRepo.ListBasic(ctx)
+}
+
 func (s *DatabaseService) UpdateManga(ctx context.Context, manga models.Manga) error {
 	return s.mangaRepo.Update(ctx, &manga)
 }

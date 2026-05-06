@@ -246,6 +246,31 @@ export class Manga {
     }
 }
 
+export class MangaBasic {
+    "id": number;
+    "main_title": string;
+
+    /** Creates a new MangaBasic instance. */
+    constructor($$source: Partial<MangaBasic> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("main_title" in $$source)) {
+            this["main_title"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MangaBasic instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MangaBasic {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new MangaBasic($$parsedSource as Partial<MangaBasic>);
+    }
+}
+
 export class MangaDetail {
     "id": number;
     "main_title": string;

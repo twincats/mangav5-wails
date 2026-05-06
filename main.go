@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -105,12 +106,14 @@ func main() {
 	// 'Mac' options tailor the window when running on macOS.
 	// 'BackgroundColour' is the background colour of the window.
 	// 'URL' is the URL that will be loaded into the webview.
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
+	const minWindowWidth = 1200
+	const minWindowHeight = 720
+	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:     "Mangav5",
-		Width:     1200,
-		Height:    720,
-		MinWidth:  1200,
-		MinHeight: 720,
+		Width:     minWindowWidth,
+		Height:    minWindowHeight,
+		MinWidth:  minWindowWidth,
+		MinHeight: minWindowHeight,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
@@ -118,6 +121,24 @@ func main() {
 		},
 		BackgroundColour: application.NewRGB(16, 16, 20),
 		URL:              "/",
+	})
+
+	// WORKAROUND (Windows / Wails v3):
+	// Pada beberapa versi Wails v3, setelah window Maximise lalu kembali Restore/UnMaximise/UnMinimise,
+	// constraint MinWidth/MinHeight bisa "lepas" dan window dapat di-resize di bawah minimum.
+	// Referensi: issue https://github.com/wailsapp/wails/issues/4593
+	// Kandidat fix upstream (masih draft saat ditambahkan):
+	// - https://github.com/wailsapp/wails/pull/5194
+	// - https://github.com/wailsapp/wails/pull/5204
+	// Hapus blok listener ini jika kamu sudah upgrade ke versi Wails yang sudah mengandung fix tersebut.
+	window.OnWindowEvent(events.Common.WindowUnMaximise, func(_ *application.WindowEvent) {
+		window.SetMinSize(minWindowWidth, minWindowHeight)
+	})
+	window.OnWindowEvent(events.Common.WindowUnMinimise, func(_ *application.WindowEvent) {
+		window.SetMinSize(minWindowWidth, minWindowHeight)
+	})
+	window.OnWindowEvent(events.Common.WindowRestore, func(_ *application.WindowEvent) {
+		window.SetMinSize(minWindowWidth, minWindowHeight)
 	})
 
 	// Create a goroutine that emits an event containing the current time every second.

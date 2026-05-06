@@ -150,7 +150,7 @@ const columns: DataTableColumns<Chapter> = [
   {
     title: 'Status',
     key: 'info',
-    width: 90,
+    width: 100,
     render(row) {
       // Icon Kompresi
       const compressIcon =

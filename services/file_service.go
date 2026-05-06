@@ -289,7 +289,7 @@ func (s *FileService) GetImageList(relativePath string) ([]string, error) {
 func isImageFile(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp":
+	case ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif":
 		return true
 	}
 	return false
