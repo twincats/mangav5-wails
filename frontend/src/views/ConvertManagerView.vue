@@ -100,6 +100,48 @@
         </n-list>
       </n-scrollbar>
     </div>
+    <n-modal
+      v-model:show="progressUi.visible"
+      preset="card"
+      class="w-[720px]"
+      title="Progress"
+    >
+      <n-tabs type="line" animated>
+        <n-tab-pane name="progress" tab="Progress">
+          <div class="progress-pane">
+            <!-- <stack-progress
+              :total="progress.total"
+              :success="progress.success"
+              :fail="progress.fail"
+            /> -->
+            <download-progress
+              :total="progress.total"
+              :success="progress.success"
+              :fail="progress.fail"
+            />
+          </div>
+        </n-tab-pane>
+        <n-tab-pane name="logp" tab="Log Progress">
+          <div id="logprogress"></div>
+        </n-tab-pane>
+        <n-tab-pane name="log" tab="Log">
+          <div class="log-pane">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div class="text-sm text-gray-400">Latest logs</div>
+              <div class="flex items-center gap-2">
+                <n-button size="tiny" secondary @click="clearLogs"
+                  >Clear</n-button
+                >
+                <n-button size="tiny" secondary @click="copyLogs"
+                  >Copy</n-button
+                >
+              </div>
+            </div>
+            <n-log :log="progressLogsText" :rows="12" />
+          </div>
+        </n-tab-pane>
+      </n-tabs>
+    </n-modal>
   </div>
 </template>
 
@@ -121,6 +163,37 @@ const config = reactive({
 })
 
 const selectedManga = ref<MangaBasic | null>(null)
+
+const progressUi = reactive({
+  visible: true,
+})
+
+const progress = reactive({
+  total: 100,
+  success: 51,
+  fail: 0,
+})
+
+const progressLogs = ref<string[]>([
+  'Starting convert...',
+  'Scanning chapters...',
+  'Processing: Chapter 1',
+  'Success: Chapter 1',
+  'Processing: Chapter 2',
+  'Failed: Chapter 2 (file missing)',
+])
+const progressLogsText = computed(() => progressLogs.value.join('\n'))
+const clearLogs = () => {
+  progressLogs.value = []
+}
+const copyLogs = async () => {
+  try {
+    await navigator.clipboard.writeText(progressLogsText.value)
+    message.success('Log copied')
+  } catch (_) {
+    message.error('Failed to copy log')
+  }
+}
 
 const mangaList = ref<MangaBasic[]>([])
 const getMangaList = async () => {
@@ -149,5 +222,15 @@ onMounted(() => {
 
 .manga-list :deep(.n-list-item:hover) {
   background-color: rgba(24, 160, 88, 0.1);
+}
+
+.progress-pane {
+  min-height: 320px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.log-pane {
+  min-height: 320px;
 }
 </style>

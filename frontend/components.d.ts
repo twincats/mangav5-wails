@@ -12,6 +12,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ContextMenu: typeof import('./src/components/ContextMenu.vue')['default']
+    DownloadProgress: typeof import('./src/components/DownloadProgress.vue')['default']
     HomeSearch: typeof import('./src/components/HomeSearch.vue')['default']
     MonacoEditor: typeof import('./src/components/MonacoEditor.vue')['default']
     NButton: typeof import('naive-ui')['NButton']
@@ -38,6 +39,7 @@ declare module 'vue' {
     NLayoutSider: typeof import('naive-ui')['NLayoutSider']
     NList: typeof import('naive-ui')['NList']
     NListItem: typeof import('naive-ui')['NListItem']
+    NLog: typeof import('naive-ui')['NLog']
     NMenu: typeof import('naive-ui')['NMenu']
     NMessageProvider: typeof import('naive-ui')['NMessageProvider']
     NModal: typeof import('naive-ui')['NModal']
@@ -56,5 +58,6 @@ declare module 'vue' {
     NText: typeof import('naive-ui')['NText']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    StackProgress: typeof import('./src/components/StackProgress.vue')['default']
   }
 }
