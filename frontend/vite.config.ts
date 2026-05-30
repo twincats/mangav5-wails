@@ -12,6 +12,10 @@ import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    port: Number(process.env.WAILS_VITE_PORT ?? process.env.VITE_PORT ?? 9245),
+    strictPort: false,
+  },
   plugins: [
     vue({ include: [/\.vue$/, /\.md$/] }),
     Markdown({

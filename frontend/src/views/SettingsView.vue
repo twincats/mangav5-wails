@@ -140,7 +140,9 @@
                   v-model="scrapingRuleInput.manga_rule_json"
                   language="json"
                   theme="vs-dark"
+                  modelUri="file:///manga-rule.json"
                   :jsonSchema="MangaRuleSchema"
+                  :jsonSchemaFileMatch="['file:///manga-rule.json']"
                   :formatOnLoad="true"
                   :customValidator="validateMangaRule"
                   @validate="statusJson.manga_rule = $event"
@@ -153,7 +155,9 @@
                   v-model="scrapingRuleInput.chapter_rule_json"
                   language="json"
                   theme="vs-dark"
+                  modelUri="file:///chapter-rule.json"
                   :jsonSchema="ChapterRuleSchema"
+                  :jsonSchemaFileMatch="['file:///chapter-rule.json']"
                   :formatOnLoad="true"
                   :customValidator="validateChapterRule"
                   @validate="statusJson.chapter_rule = $event"
@@ -503,7 +507,7 @@ watchDebounced(
         scrapingRuleInput.site_key = obj.site.replace(/\s+/g, '').toLowerCase()
       }
     } catch (error) {
-      console.log(error)
+      // console.log(error)
     }
   },
   { debounce: 500, maxWait: 1000 },

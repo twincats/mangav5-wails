@@ -111,7 +111,31 @@ tasks:
     deps:
       - task: install:frontend:deps
     cmds:
-      - bun run dev -- --port {{.VITE_PORT}} --strictPort
+      - bun run dev -- --port {{.VITE_PORT}}
+
+  start:frontend:
+    summary: Starts the frontend dev server in the background (non-blocking)
+    internal: true
+    deps:
+      - task: install:frontend:deps
+    cmds:
+      - |
+        {{if eq OS "windows"}}
+        powershell -NoProfile -Command 'Start-Process -FilePath "bun" -ArgumentList @("run","dev","--","--port","{{.VITE_PORT}}") -WorkingDirectory "frontend" -WindowStyle Hidden | Out-Null'
+        {{else}}
+        sh -lc 'cd frontend && nohup bun run dev -- --port {{.VITE_PORT}} >/dev/null 2>&1 &'
+        {{end}}
+
+  wait:frontend:
+    summary: Wait until the Vite dev server is accepting connections
+    internal: true
+    cmds:
+      - |
+        {{if eq OS "windows"}}
+        powershell -NoProfile -Command '$port={{.VITE_PORT}}; for($i=0;$i -lt 300;$i++){ if(Test-NetConnection -ComputerName 127.0.0.1 -Port $port -InformationLevel Quiet){ exit 0 }; Start-Sleep -Milliseconds 100 }; exit 1'
+        {{else}}
+        sh -lc 'port={{.VITE_PORT}}; i=0; while [ $i -lt 300 ]; do (echo > /dev/tcp/127.0.0.1/$port) >/dev/null 2>&1 && exit 0; i=$((i+1)); sleep 0.1; done; exit 1'
+        {{end}}
 
   update:build-assets:
     summary: Updates the build assets
