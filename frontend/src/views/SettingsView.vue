@@ -10,8 +10,11 @@
           <n-button
             tertiary
             type="primary"
+            :loading="isScraping && scrapingTarget === 'manga'"
+            :disabled="isScraping && scrapingTarget !== 'manga'"
             @click="
               clickScrapeTest(
+                'manga',
                 urlRule.url_manga_rule,
                 scrapingRuleInput.manga_rule_json,
               )
@@ -28,8 +31,11 @@
           <n-button
             tertiary
             type="primary"
+            :loading="isScraping && scrapingTarget === 'chapter'"
+            :disabled="isScraping && scrapingTarget !== 'chapter'"
             @click="
               clickScrapeTest(
+                'chapter',
                 urlRule.url_chapter_rule,
                 scrapingRuleInput.chapter_rule_json,
               )
@@ -122,52 +128,70 @@
     <!-- editor row -->
     <div class="grid grid-cols-2 gap-2">
       <div>
-        <n-tabs
-          type="line"
-          paneClass="h-[calc(100vh-280px)]"
-          v-model:value="activeTab"
-        >
-          <n-tab-pane name="editor1" tab="Manga Rule">
-            <div class="h-full">
-              <MonacoEditor
-                v-model="scrapingRuleInput.manga_rule_json"
-                language="json"
-                theme="vs-dark"
-                :jsonSchema="MangaRuleSchema"
-                :formatOnLoad="true"
-                :customValidator="validateMangaRule"
-                @validate="statusJson.manga_rule = $event"
-              />
-            </div>
-          </n-tab-pane>
-          <n-tab-pane name="editor2" tab="Chapter Rule">
-            <div class="h-full">
-              <MonacoEditor
-                v-model="scrapingRuleInput.chapter_rule_json"
-                language="json"
-                theme="vs-dark"
-                :jsonSchema="ChapterRuleSchema"
-                :formatOnLoad="true"
-                :customValidator="validateChapterRule"
-                @validate="statusJson.chapter_rule = $event"
-              />
-            </div>
-          </n-tab-pane>
-        </n-tabs>
+        <n-spin :show="isScraping" description="Scraping...">
+          <n-tabs
+            type="line"
+            paneClass="h-[calc(100vh-280px)]"
+            v-model:value="activeTab"
+          >
+            <n-tab-pane name="editor1" tab="Manga Rule">
+              <div class="h-full">
+                <MonacoEditor
+                  v-model="scrapingRuleInput.manga_rule_json"
+                  language="json"
+                  theme="vs-dark"
+                  :jsonSchema="MangaRuleSchema"
+                  :formatOnLoad="true"
+                  :customValidator="validateMangaRule"
+                  @validate="statusJson.manga_rule = $event"
+                />
+              </div>
+            </n-tab-pane>
+            <n-tab-pane name="editor2" tab="Chapter Rule">
+              <div class="h-full">
+                <MonacoEditor
+                  v-model="scrapingRuleInput.chapter_rule_json"
+                  language="json"
+                  theme="vs-dark"
+                  :jsonSchema="ChapterRuleSchema"
+                  :formatOnLoad="true"
+                  :customValidator="validateChapterRule"
+                  @validate="statusJson.chapter_rule = $event"
+                />
+              </div>
+            </n-tab-pane>
+          </n-tabs>
+        </n-spin>
       </div>
       <div>
-        <n-tabs type="line" paneClass="h-[calc(100vh-280px)]">
-          <n-tab-pane name="editor3" tab="Scrape Result">
-            <div class="h-full">
-              <MonacoEditor
-                v-model="resultJson"
-                language="json"
-                theme="vs-dark"
-                :formatOnLoad="true"
-              />
-            </div>
-          </n-tab-pane>
-        </n-tabs>
+        <n-spin :show="isScraping" description="Scraping...">
+          <n-tabs
+            type="line"
+            paneClass="h-[calc(100vh-280px)]"
+            v-model:value="activeOutputTab"
+          >
+            <n-tab-pane name="result" tab="Scrape Result">
+              <div class="h-full">
+                <MonacoEditor
+                  v-model="resultJson"
+                  language="json"
+                  theme="vs-dark"
+                  :formatOnLoad="true"
+                />
+              </div>
+            </n-tab-pane>
+            <n-tab-pane name="rawhtml" tab="Raw HTML">
+              <div class="h-full">
+                <MonacoEditor
+                  v-model="rawHtml"
+                  language="html"
+                  theme="vs-dark"
+                  :formatOnLoad="true"
+                />
+              </div>
+            </n-tab-pane>
+          </n-tabs>
+        </n-spin>
       </div>
     </div>
     <!-- modal for loading scraping rules -->
@@ -228,9 +252,13 @@ import { NIcon, NInput } from 'naive-ui'
 import { h } from 'vue'
 
 const resultJson = ref('')
+const rawHtml = ref('')
 const dialog = useDialog()
 const message = useMessage()
 const activeTab = ref('editor1')
+const activeOutputTab = ref('result')
+const isScraping = ref(false)
+const scrapingTarget = ref<'manga' | 'chapter' | ''>('')
 const statusJson = reactive({
   manga_rule: false,
   chapter_rule: false,
@@ -297,22 +325,54 @@ Events.On('downloadProgress', data => {
 })
 
 // scrape test
-const clickScrapeTest = async (url: string, json_rule: string) => {
-  if (!json_rule) {
-    console.log('JSON Rule is empty')
+const clickScrapeTest = async (
+  target: 'manga' | 'chapter',
+  url: string,
+  json_rule: string,
+) => {
+  if (isScraping.value) return
+  if (!url?.trim()) {
+    message.error('URL masih kosong')
     return
   }
-  const rules = JSON.parse(json_rule)
+  if (!json_rule?.trim()) {
+    message.error('JSON Rule masih kosong')
+    return
+  }
+
+  let rules: any
+  try {
+    rules = JSON.parse(json_rule)
+  } catch (error) {
+    message.error('JSON Rule tidak valid')
+    return
+  }
+
+  isScraping.value = true
+  scrapingTarget.value = target
   try {
     const res = await ScraperService.Scrape(rules, url)
-    resultJson.value = JSON.stringify(res, null, 2)
+    const html = (res as any)?.__raw_html
+    rawHtml.value = typeof html === 'string' ? html : ''
+
+    if (typeof html === 'string') {
+      const resultWithoutHtml = { ...(res as any) }
+      delete resultWithoutHtml.__raw_html
+      resultJson.value = JSON.stringify(resultWithoutHtml, null, 2)
+    } else {
+      resultJson.value = JSON.stringify(res, null, 2)
+    }
     console.log(res)
   } catch (error) {
     console.log(error)
+    message.error(`${error}`)
     dialog.error({
       title: 'Error',
       content: `${error}`,
     })
+  } finally {
+    isScraping.value = false
+    scrapingTarget.value = ''
   }
 }
 
@@ -341,6 +401,8 @@ const clearInput = () => {
   urlRule.url_manga_rule = ''
   urlRule.url_chapter_rule = ''
   resultJson.value = ''
+  rawHtml.value = ''
+  activeOutputTab.value = 'result'
 }
 /* ====== SAVE RULES ====== */
 const saveScrapingRules = async () => {

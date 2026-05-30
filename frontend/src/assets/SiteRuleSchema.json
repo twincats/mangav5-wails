@@ -54,6 +54,15 @@
       }
     },
 
+    "debug": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "include_raw_html": { "type": "boolean", "default": true },
+        "show_browser": { "type": "boolean", "default": false }
+      }
+    },
+
     "api": {
       "type": "object",
       "required": ["steps"],
@@ -160,6 +169,14 @@
         "trim": { "type": "boolean", "default": false },
 
         "regex": { "type": "string" },
+        "replace": {
+          "type": "object",
+          "properties": {
+            "pattern": { "type": "string" },
+            "with": { "type": "string" }
+          },
+          "required": ["pattern", "with"]
+        },
 
         "template": { "type": "string" },
 

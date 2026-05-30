@@ -7,11 +7,14 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-resty/resty/v2"
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
 	"github.com/tidwall/gjson"
 )
 
@@ -21,6 +24,7 @@ const DefaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 type ScraperService struct {
 	browserService *BrowserService
 	client         *resty.Client
+	reCache        sync.Map
 }
 
 // NewScraperService creates a new instance
@@ -39,6 +43,7 @@ func NewScraperService(bs *BrowserService) *ScraperService {
 // Scrape executes the scraping rule
 func (s *ScraperService) Scrape(rule SiteRule, overrideURL string) (map[string]interface{}, error) {
 	targetURL := overrideURL
+	targetURLForIDExtraction := overrideURL
 	params := make(map[string]interface{})
 
 	// Handle Override URL (User Input)
@@ -55,16 +60,11 @@ func (s *ScraperService) Scrape(rule SiteRule, overrideURL string) (map[string]i
 				}
 			}
 
-			// Use the path part for ID extraction logic
-			// Reconstruct URL without query params for the pattern matching
-			// Note: We keep the scheme and host if present
-			targetURLWithoutQuery := targetURL
-			if strings.Contains(targetURL, "?") {
-				targetURLWithoutQuery = strings.Split(targetURL, "?")[0]
-			}
-
-			// Use the cleaner URL for subsequent ID extraction
-			targetURL = targetURLWithoutQuery
+			// Keep the original URL (including query) for navigation/scraping,
+			// but also compute a queryless URL for ID extraction purposes (offset/limit won't pollute).
+			uNoQuery := *u
+			uNoQuery.RawQuery = ""
+			targetURLForIDExtraction = uNoQuery.String()
 		}
 
 		// Case 1: Input is a Full URL (e.g. https://site.com/manga/id/)
@@ -81,7 +81,7 @@ func (s *ScraperService) Scrape(rule SiteRule, overrideURL string) (map[string]i
 			if rule.Entry != nil && rule.Entry.Regex != "" {
 				re, err := regexp.Compile(rule.Entry.Regex)
 				if err == nil {
-					matches := re.FindStringSubmatch(targetURL)
+					matches := re.FindStringSubmatch(targetURLForIDExtraction)
 					names := re.SubexpNames()
 					if len(matches) > 0 {
 						for i, name := range names {
@@ -248,6 +248,38 @@ func (s *ScraperService) scrapeBrowser(url string, rule SiteRule, params map[str
 		return nil, fmt.Errorf("url is required for browser strategy")
 	}
 
+	timeoutMs := 10000
+	pollMs := 250
+	if rule.WaitConfig != nil {
+		if rule.WaitConfig.Timeout > 0 {
+			timeoutMs = rule.WaitConfig.Timeout
+		}
+		if rule.WaitConfig.PollInterval > 0 {
+			pollMs = rule.WaitConfig.PollInterval
+		}
+	}
+
+	debugEnabled := false
+	includeRawHTML := false
+	if rule.Debug != nil && rule.Debug.Enabled {
+		debugEnabled = true
+		includeRawHTML = true
+		if rule.Debug.IncludeRawHTML != nil {
+			includeRawHTML = *rule.Debug.IncludeRawHTML
+		}
+	}
+	if v, ok := params["__debug"]; ok {
+		switch vv := v.(type) {
+		case string:
+			vv = strings.TrimSpace(strings.ToLower(vv))
+			debugEnabled = vv == "1" || vv == "true" || vv == "yes" || vv == "y"
+		case bool:
+			debugEnabled = vv
+		default:
+			debugEnabled = fmt.Sprintf("%v", vv) == "1"
+		}
+	}
+
 	// Initialize Context
 	ctx := make(map[string]interface{})
 	for k, v := range params {
@@ -258,42 +290,207 @@ func (s *ScraperService) scrapeBrowser(url string, rule SiteRule, params map[str
 		ctx["id"] = url
 	}
 
-	if err := s.browserService.initBrowser(); err != nil {
+	showBrowser := false
+	if rule.Debug != nil && rule.Debug.Enabled && rule.Debug.ShowBrowser != nil {
+		showBrowser = *rule.Debug.ShowBrowser
+	}
+	if err := s.browserService.ensureBrowser(!showBrowser); err != nil {
 		return nil, err
 	}
 
-	page := s.browserService.browser.MustPage(url)
+	opTimeout := time.Duration(timeoutMs) * time.Millisecond
+	page := s.browserService.browser.MustPage()
 	defer page.Close()
+
+	_ = page.Timeout(2 * time.Second).SetUserAgent(&proto.NetworkSetUserAgentOverride{
+		UserAgent: DefaultUserAgent,
+	})
+
+	if err := page.Timeout(opTimeout).Navigate(url); err != nil {
+		return nil, err
+	}
+
+	debug := make(map[string]interface{})
+	debug["url"] = url
+	debug["strategy"] = "browser"
+	tStart := time.Now()
+	var msWaitLoad int64
+	var msWaitStable int64
+	var msWaitSelectors int64
 
 	// Apply Wait Config
 	if rule.WaitConfig != nil {
 		wc := rule.WaitConfig
-		if wc.Timeout > 0 {
-			// Note: Rod context timeout logic would go here if needed
-		}
-
 		if !wc.SkipNavigationWait {
-			page.MustWaitLoad()
+			t := time.Now()
+			if err := page.Timeout(opTimeout).WaitLoad(); err != nil {
+				debug["wait_load_error"] = err.Error()
+			} else {
+				msWaitLoad = time.Since(t).Milliseconds()
+			}
 		}
 
 		if !wc.SkipRenderStable {
-			page.MustWaitStable()
-		}
-
-		// Wait for specific selectors
-		if len(wc.ContainerSelectors) > 0 {
-			for _, sel := range wc.ContainerSelectors {
-				if err := page.WaitElementsMoreThan(sel, 0); err != nil {
-					// Log or ignore?
-				}
+			t := time.Now()
+			stableTimeout := 4 * time.Second
+			if opTimeout > 0 && opTimeout < stableTimeout {
+				stableTimeout = opTimeout
+			}
+			if err := page.Timeout(stableTimeout).WaitStable(1 * time.Second); err != nil {
+				debug["wait_stable_error"] = err.Error()
+			} else {
+				msWaitStable = time.Since(t).Milliseconds()
 			}
 		}
+
+		selectorStatuses := make([]map[string]interface{}, 0)
+		anyContentOK := false
+
+		if !wc.SkipWaits {
+			deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
+			waitSelector := func(sel string) {
+				sel = strings.TrimSpace(sel)
+				if sel == "" {
+					return
+				}
+
+				st := map[string]interface{}{"selector": sel}
+				t := time.Now()
+				for time.Now().Before(deadline) {
+					evalTimeout := 2 * time.Second
+					if r := time.Until(deadline); r > 0 && r < evalTimeout {
+						evalTimeout = r
+					}
+					cntRes, cntErr := page.Timeout(evalTimeout).Eval(fmt.Sprintf(`() => document.querySelectorAll(%q).length`, sel))
+					if cntErr == nil {
+						cnt := int(cntRes.Value.Int())
+						st["count"] = cnt
+						if cnt > 0 {
+							st["ok"] = true
+							break
+						}
+					} else {
+						st["count_error"] = cntErr.Error()
+					}
+					time.Sleep(time.Duration(pollMs) * time.Millisecond)
+				}
+				if _, ok := st["count"]; !ok {
+					st["count"] = 0
+				}
+				if _, ok := st["ok"]; !ok {
+					st["ok"] = false
+				}
+				st["wait_ms"] = time.Since(t).Milliseconds()
+
+				selectorStatuses = append(selectorStatuses, st)
+			}
+
+			tSelectors := time.Now()
+			for _, sel := range wc.ContainerSelectors {
+				waitSelector(sel)
+			}
+			for _, sel := range wc.ContentSelectors {
+				waitSelector(sel)
+				if len(selectorStatuses) > 0 {
+					last := selectorStatuses[len(selectorStatuses)-1]
+					if ok, _ := last["ok"].(bool); ok {
+						anyContentOK = true
+					}
+				}
+			}
+
+			if !anyContentOK && time.Until(deadline) > 0 && len(wc.ContentSelectors) > 0 {
+				_, _ = page.Timeout(8 * time.Second).Eval(`async () => {
+					const step = Math.max(200, Math.floor(window.innerHeight * 0.8));
+					const maxY = Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0);
+					for (let y = 0; y <= maxY; y += step) {
+						window.scrollTo(0, y);
+						await new Promise(r => setTimeout(r, 80));
+					}
+					window.scrollTo(0, 0);
+					return true;
+				}`)
+
+				for _, sel := range wc.ContentSelectors {
+					waitSelector(sel)
+					if len(selectorStatuses) > 0 {
+						last := selectorStatuses[len(selectorStatuses)-1]
+						if ok, _ := last["ok"].(bool); ok {
+							anyContentOK = true
+						}
+					}
+					if anyContentOK {
+						break
+					}
+				}
+			}
+
+			if wc.MinTextLength > 0 {
+				st := map[string]interface{}{"check": "min_text_length", "min": wc.MinTextLength}
+				t := time.Now()
+				for time.Now().Before(deadline) {
+					res, err := page.Timeout(2 * time.Second).Eval(`() => (document.body && document.body.innerText ? document.body.innerText.length : 0)`)
+					if err == nil {
+						l := int(res.Value.Int())
+						st["current"] = l
+						if l >= wc.MinTextLength {
+							st["ok"] = true
+							break
+						}
+					} else {
+						st["error"] = err.Error()
+						break
+					}
+					time.Sleep(time.Duration(pollMs) * time.Millisecond)
+				}
+				if _, ok := st["ok"]; !ok {
+					st["ok"] = false
+				}
+				st["wait_ms"] = time.Since(t).Milliseconds()
+				debug["min_text_length"] = st
+			}
+
+			if wc.RequireImageLoaded {
+				st := map[string]interface{}{"check": "images_loaded"}
+				t := time.Now()
+				for time.Now().Before(deadline) {
+					res, err := page.Timeout(2 * time.Second).Eval(`() => Array.from(document.images || []).every(img => img.complete && img.naturalWidth > 0)`)
+					if err == nil {
+						ok := res.Value.Bool()
+						st["ok"] = ok
+						if ok {
+							break
+						}
+					} else {
+						st["error"] = err.Error()
+						st["ok"] = false
+						break
+					}
+					time.Sleep(time.Duration(pollMs) * time.Millisecond)
+				}
+				if _, ok := st["ok"]; !ok {
+					st["ok"] = false
+				}
+				st["wait_ms"] = time.Since(t).Milliseconds()
+				debug["images_loaded"] = st
+			}
+
+			msWaitSelectors = time.Since(tSelectors).Milliseconds()
+		}
+
+		debug["selectors"] = selectorStatuses
 	} else {
 		// Default wait
-		page.MustWaitStable()
+		t := time.Now()
+		stableTimeout := 4 * time.Second
+		if err := page.Timeout(stableTimeout).WaitStable(1 * time.Second); err != nil {
+			debug["wait_stable_error"] = err.Error()
+		} else {
+			msWaitStable = time.Since(t).Milliseconds()
+		}
 	}
 
-	htmlStr, err := page.HTML()
+	htmlStr, err := page.Timeout(opTimeout).HTML()
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +500,115 @@ func (s *ScraperService) scrapeBrowser(url string, rule SiteRule, params map[str
 		return nil, err
 	}
 
-	return s.extractFields(doc.Selection, rule.Extract), nil
+	result := s.extractFields(doc.Selection, rule.Extract)
+	s.applyBrowserDOMOverrides(page, opTimeout, rule.Extract, result)
+
+	if debugEnabled {
+		debug["wait_load_ms"] = msWaitLoad
+		debug["wait_stable_ms"] = msWaitStable
+		debug["wait_selectors_ms"] = msWaitSelectors
+		debug["total_ms"] = time.Since(tStart).Milliseconds()
+		debug["html_length"] = len(htmlStr)
+		if rs, e := page.Timeout(2*time.Second).Eval(`() => document.readyState`); e == nil {
+			debug["ready_state"] = rs.Value.String()
+		}
+
+		result["__debug"] = debug
+		if includeRawHTML {
+			result["__raw_html"] = htmlStr
+		}
+	}
+
+	return result, nil
+}
+
+func (s *ScraperService) applyBrowserDOMOverrides(page *rod.Page, opTimeout time.Duration, rules []FieldRule, result map[string]interface{}) {
+	for _, field := range rules {
+		if field.Type != "css" {
+			continue
+		}
+		if strings.TrimSpace(field.Selector) == "" {
+			continue
+		}
+		if len(field.Children) > 0 {
+			continue
+		}
+		if len(field.Attr) == 0 {
+			continue
+		}
+
+		attrsJSON, err := json.Marshal(field.Attr)
+		if err != nil {
+			continue
+		}
+
+		sel := strings.TrimSpace(field.Selector)
+		js := fmt.Sprintf(`() => {
+			const sel = %q;
+			const attrs = %s;
+			const nodes = Array.from(document.querySelectorAll(sel));
+			const pick = (el) => {
+				for (const a of attrs) {
+					const v = el.getAttribute(a);
+					if (v) return v;
+				}
+				if (el && el.src) return el.src;
+				return "";
+			};
+			const urls = nodes.map(pick).filter(Boolean);
+			return [nodes.length, urls];
+		}`, sel, string(attrsJSON))
+
+		deadline := time.Now().Add(5 * time.Second)
+		if opTimeout > 0 && time.Now().Add(opTimeout).Before(deadline) {
+			deadline = time.Now().Add(opTimeout)
+		}
+
+		out := make([]string, 0)
+		targetCount := 0
+		for time.Now().Before(deadline) {
+			evalRes, evalErr := page.Timeout(2 * time.Second).Eval(js)
+			if evalErr != nil {
+				break
+			}
+
+			tuple := evalRes.Value.Arr()
+			if len(tuple) < 2 {
+				break
+			}
+			targetCount = int(tuple[0].Int())
+			arr := tuple[1].Arr()
+			tmp := make([]string, 0, len(arr))
+			for _, v := range arr {
+				u := sanitizeURL(v.String())
+				if u != "" {
+					tmp = append(tmp, u)
+				}
+			}
+			if len(tmp) > 0 {
+				out = tmp
+				if targetCount == 0 || len(out) >= targetCount {
+					break
+				}
+			}
+			time.Sleep(150 * time.Millisecond)
+		}
+
+		if field.Multiple {
+			result[field.Name] = out
+		} else if len(out) > 0 {
+			result[field.Name] = out[0]
+		}
+	}
+}
+
+func sanitizeURL(v string) string {
+	s := strings.TrimSpace(v)
+	s = strings.Trim(s, "`")
+	s = strings.TrimSpace(s)
+	s = strings.Trim(s, "\"")
+	s = strings.TrimSpace(s)
+	return s
 }
 
 func (s *ScraperService) scrapeAPI(url string, rule SiteRule, params map[string]interface{}) (map[string]interface{}, error) {
@@ -658,7 +963,7 @@ func (s *ScraperService) extractCSS(sel *goquery.Selection, rule FieldRule) inte
 
 	// Handle Multiple
 	if rule.Multiple {
-		var items []interface{}
+		items := make([]interface{}, 0)
 		current.Each(func(i int, selection *goquery.Selection) {
 			// Filter Logic
 			if rule.Filter != "" {
@@ -718,8 +1023,7 @@ func (s *ScraperService) extractValue(sel *goquery.Selection, rule FieldRule) in
 
 	// Regex
 	if rule.Regex != "" {
-		re, err := regexp.Compile(rule.Regex)
-		if err == nil {
+		if re, err := s.getRegexp(rule.Regex); err == nil {
 			matches := re.FindStringSubmatch(val)
 			if len(matches) > 1 {
 				val = matches[1] // Return first capture group
@@ -729,7 +1033,29 @@ func (s *ScraperService) extractValue(sel *goquery.Selection, rule FieldRule) in
 		}
 	}
 
+	// Replace (Regex ReplaceAll)
+	if rule.Replace != nil && rule.Replace.Pattern != "" {
+		if re, err := s.getRegexp(rule.Replace.Pattern); err == nil {
+			val = re.ReplaceAllString(val, rule.Replace.With)
+		}
+	}
+
 	return val
+}
+
+func (s *ScraperService) getRegexp(pattern string) (*regexp.Regexp, error) {
+	if pattern == "" {
+		return nil, fmt.Errorf("empty pattern")
+	}
+	if v, ok := s.reCache.Load(pattern); ok {
+		return v.(*regexp.Regexp), nil
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+	actual, _ := s.reCache.LoadOrStore(pattern, re)
+	return actual.(*regexp.Regexp), nil
 }
 
 func (s *ScraperService) extractJSON(jsonStr string, rule FieldRule) interface{} {
@@ -782,12 +1108,18 @@ func (s *ScraperService) extractJSON(jsonStr string, rule FieldRule) interface{}
 	val := res.String()
 	// Regex on string value
 	if rule.Regex != "" {
-		re, err := regexp.Compile(rule.Regex)
-		if err == nil {
+		if re, err := s.getRegexp(rule.Regex); err == nil {
 			matches := re.FindStringSubmatch(val)
 			if len(matches) > 1 {
 				val = matches[1]
 			}
+		}
+	}
+
+	// Replace (Regex ReplaceAll)
+	if rule.Replace != nil && rule.Replace.Pattern != "" {
+		if re, err := s.getRegexp(rule.Replace.Pattern); err == nil {
+			val = re.ReplaceAllString(val, rule.Replace.With)
 		}
 	}
 

@@ -14,6 +14,7 @@ import (
 type BrowserService struct {
 	browser  *rod.Browser
 	launcher *launcher.Launcher
+	headless bool
 }
 
 // ScrapeResult menyimpan hasil scraping
@@ -29,19 +30,18 @@ func NewBrowserService() *BrowserService {
 	return &BrowserService{}
 }
 
-// initBrowser menginisialisasi browser jika belum ada atau terputus
-func (s *BrowserService) initBrowser() error {
+func (s *BrowserService) ensureBrowser(headless bool) error {
 	if s.browser != nil {
-		// Cek apakah browser masih responsif
-		if _, err := s.browser.Version(); err == nil {
+		if _, err := s.browser.Version(); err == nil && s.headless == headless {
 			return nil
 		}
+		s.Cleanup()
 	}
 
 	// Gunakan launcher untuk mencari browser default dan set headless=true
 	// Kita nonaktifkan Leakless untuk menghindari false positive antivirus di Windows
 	l := launcher.New().
-		Headless(true).
+		Headless(headless).
 		Leakless(false).
 		Set("disable-web-security", "true").         // Disable CORS
 		Set("disable-site-isolation-trials", "true") // Disable site isolation
@@ -59,8 +59,14 @@ func (s *BrowserService) initBrowser() error {
 
 	// Connect ke browser
 	s.browser = rod.New().ControlURL(u).MustConnect()
+	s.headless = headless
 
 	return nil
+}
+
+// initBrowser menginisialisasi browser jika belum ada atau terputus
+func (s *BrowserService) initBrowser() error {
+	return s.ensureBrowser(true)
 }
 
 // ScrapePage melakukan scraping sederhana pada halaman web

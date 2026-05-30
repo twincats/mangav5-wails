@@ -9,6 +9,13 @@ type SiteRule struct {
 	API        *APIWorkflow `json:"api,omitempty"`
 	Extract    []FieldRule  `json:"extract"`
 	WaitConfig *WaitConfig  `json:"wait_config,omitempty"`
+	Debug      *DebugConfig `json:"debug,omitempty"`
+}
+
+type DebugConfig struct {
+	Enabled        bool  `json:"enabled"`
+	IncludeRawHTML *bool `json:"include_raw_html,omitempty"`
+	ShowBrowser    *bool `json:"show_browser,omitempty"`
 }
 
 type EntryRule struct {
@@ -23,9 +30,9 @@ type APIWorkflow struct {
 }
 
 type APIStep struct {
-	ID       string      `json:"id"`
-	Request  APIRequest  `json:"request"`
-	Response string      `json:"response,omitempty"` // json, html. default json
+	ID       string     `json:"id"`
+	Request  APIRequest `json:"request"`
+	Response string     `json:"response,omitempty"` // json, html. default json
 }
 
 type APIRequest struct {
@@ -39,11 +46,12 @@ type FieldRule struct {
 	Type string `json:"type"` // css, json, template
 
 	// Common
-	Multiple bool        `json:"multiple"`
-	Trim     bool        `json:"trim"`
-	Regex    string      `json:"regex,omitempty"`
-	Children []FieldRule `json:"children,omitempty"`
-	From     string      `json:"from,omitempty"`
+	Multiple bool         `json:"multiple"`
+	Trim     bool         `json:"trim"`
+	Regex    string       `json:"regex,omitempty"`
+	Replace  *ReplaceRule `json:"replace,omitempty"`
+	Children []FieldRule  `json:"children,omitempty"`
+	From     string       `json:"from,omitempty"`
 
 	// CSS
 	Selector   string   `json:"selector,omitempty"`
@@ -59,6 +67,11 @@ type FieldRule struct {
 
 	// Text (Fixed Value)
 	Text string `json:"text,omitempty"`
+}
+
+type ReplaceRule struct {
+	Pattern string `json:"pattern"`
+	With    string `json:"with"`
 }
 
 type WaitConfig struct {

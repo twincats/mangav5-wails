@@ -55,6 +55,15 @@
         "navigation_timeout_ms": { "type": "integer" }
       }
     },
+
+    "debug": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "include_raw_html": { "type": "boolean", "default": true },
+        "show_browser": { "type": "boolean", "default": false }
+      }
+    },
     "api": {
       "type": "object",
       "required": ["steps"],
@@ -149,6 +158,14 @@
         "multiple": { "type": "boolean", "default": false },
         "trim": { "type": "boolean", "default": false },
         "regex": { "type": "string" },
+        "replace": {
+          "type": "object",
+          "properties": {
+            "pattern": { "type": "string" },
+            "with": { "type": "string" }
+          },
+          "required": ["pattern", "with"]
+        },
         "template": { "type": "string" },
         "text": {
           "type": "string",
