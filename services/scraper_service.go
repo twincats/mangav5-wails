@@ -150,15 +150,15 @@ func (s *ScraperService) extractParamsFromURLTemplate(templateStr, urlStr string
 	// 1. Escape the template to make it safe for regex
 	regexStr := regexp.QuoteMeta(templateStr)
 
-	// 2. Replace {id} placeholder with named capture group
-	// \{id\} is the escaped version of {id}
-	// We use [^/]+ to match the segment (stops at next slash)
-	regexStr = strings.ReplaceAll(regexStr, "\\{id\\}", "(?P<id>[^/]+)")
+	// 2. Replace placeholders like {id}, {slug}, {manga_slug} with named capture groups.
+	// We stop at '/', '?', '&', or '#' so query-string placeholders don't accidentally swallow extra params.
+	placeholderRe := regexp.MustCompile(`\\\{([a-zA-Z_][a-zA-Z0-9_]*)\\\}`)
+	regexStr = placeholderRe.ReplaceAllString(regexStr, `(?P<$1>[^/?&#]+)`)
 
 	// 3. Anchor and allow optional trailing slash and extra segments
 	// Was: regexStr = "^" + regexStr + "/?$"
-	// New: Allow anything after the match if it starts with /
-	regexStr = "^" + regexStr + "(?:/.*)?$"
+	// New: Allow anything after the match (extra path or extra query params)
+	regexStr = "^" + regexStr + `(?:[/?#&].*)?$`
 
 	re, err := regexp.Compile(regexStr)
 	if err != nil {
@@ -248,17 +248,6 @@ func (s *ScraperService) scrapeBrowser(url string, rule SiteRule, params map[str
 		return nil, fmt.Errorf("url is required for browser strategy")
 	}
 
-	timeoutMs := 10000
-	pollMs := 250
-	if rule.WaitConfig != nil {
-		if rule.WaitConfig.Timeout > 0 {
-			timeoutMs = rule.WaitConfig.Timeout
-		}
-		if rule.WaitConfig.PollInterval > 0 {
-			pollMs = rule.WaitConfig.PollInterval
-		}
-	}
-
 	debugEnabled := false
 	includeRawHTML := false
 	if rule.Debug != nil && rule.Debug.Enabled {
@@ -298,17 +287,13 @@ func (s *ScraperService) scrapeBrowser(url string, rule SiteRule, params map[str
 		return nil, err
 	}
 
-	opTimeout := time.Duration(timeoutMs) * time.Millisecond
+	opTimeout := 10 * time.Second
 	page := s.browserService.browser.MustPage()
 	defer page.Close()
 
 	_ = page.Timeout(2 * time.Second).SetUserAgent(&proto.NetworkSetUserAgentOverride{
 		UserAgent: DefaultUserAgent,
 	})
-
-	if err := page.Timeout(opTimeout).Navigate(url); err != nil {
-		return nil, err
-	}
 
 	debug := make(map[string]interface{})
 	debug["url"] = url
@@ -318,13 +303,129 @@ func (s *ScraperService) scrapeBrowser(url string, rule SiteRule, params map[str
 	var msWaitStable int64
 	var msWaitSelectors int64
 
-	// Apply Wait Config
-	if rule.WaitConfig != nil {
+	stepsDebug := make([]map[string]interface{}, 0)
+
+	steps := make([]BrowserStep, 0)
+	if rule.Browser != nil && len(rule.Browser.Steps) > 0 {
+		steps = append(steps, rule.Browser.Steps...)
+	} else {
+		steps = append(steps, BrowserStep{URL: url, WaitConfig: rule.WaitConfig})
+	}
+
+	for i, step := range steps {
+		stepURL := strings.TrimSpace(step.URL)
+		if rule.Browser != nil && len(rule.Browser.Steps) > 0 {
+			stepURLRaw := s.processTemplate(step.URL, ctx)
+			if str, ok := stepURLRaw.(string); ok {
+				stepURL = strings.TrimSpace(str)
+			} else {
+				stepURL = strings.TrimSpace(fmt.Sprintf("%v", stepURLRaw))
+			}
+		}
+
+		if strings.Contains(stepURL, "{") && strings.Contains(stepURL, "}") {
+			return nil, fmt.Errorf("browser step %d failed: URL %s contains unreplaced placeholders. Available keys: %v", i, stepURL, getKeys(ctx))
+		}
+
 		wc := rule.WaitConfig
+		if step.WaitConfig != nil {
+			wc = step.WaitConfig
+		}
+
+		timeoutMs := 10000
+		pollMs := 250
+		if wc != nil {
+			if wc.Timeout > 0 {
+				timeoutMs = wc.Timeout
+			}
+			if wc.PollInterval > 0 {
+				pollMs = wc.PollInterval
+			}
+		}
+
+		stepTimeout := time.Duration(timeoutMs) * time.Millisecond
+		opTimeout = stepTimeout
+
+		ctx["url"] = stepURL
+		if err := page.Timeout(stepTimeout).Navigate(stepURL); err != nil {
+			return nil, err
+		}
+
+		waitDbg, wLoad, wStable, wSelectors := s.waitForBrowserPage(page, stepTimeout, timeoutMs, pollMs, wc)
+		msWaitLoad = wLoad
+		msWaitStable = wStable
+		msWaitSelectors = wSelectors
+
+		if err := s.executeBrowserActions(page, stepTimeout, timeoutMs, pollMs, step.Actions, wc, ctx); err != nil {
+			return nil, err
+		}
+
+		if debugEnabled {
+			stepDbg := map[string]interface{}{
+				"i":               i,
+				"url":             stepURL,
+				"wait_load_ms":    wLoad,
+				"wait_stable_ms":  wStable,
+				"wait_selectors_ms": wSelectors,
+			}
+			for k, v := range waitDbg {
+				stepDbg[k] = v
+			}
+			stepsDebug = append(stepsDebug, stepDbg)
+		}
+	}
+
+	if debugEnabled && len(stepsDebug) > 0 {
+		debug["steps"] = stepsDebug
+		last := stepsDebug[len(stepsDebug)-1]
+		if u, ok := last["url"].(string); ok {
+			debug["final_url"] = u
+		}
+	}
+
+	htmlStr, err := page.Timeout(opTimeout).HTML()
+	if err != nil {
+		return nil, err
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStr))
+	if err != nil {
+		return nil, err
+	}
+
+	result := s.extractFields(doc.Selection, rule.Extract)
+	s.applyBrowserDOMOverrides(page, opTimeout, rule.Extract, result)
+
+	if debugEnabled {
+		debug["wait_load_ms"] = msWaitLoad
+		debug["wait_stable_ms"] = msWaitStable
+		debug["wait_selectors_ms"] = msWaitSelectors
+		debug["total_ms"] = time.Since(tStart).Milliseconds()
+		debug["html_length"] = len(htmlStr)
+		if rs, e := page.Timeout(2*time.Second).Eval(`() => document.readyState`); e == nil {
+			debug["ready_state"] = rs.Value.String()
+		}
+
+		result["__debug"] = debug
+		if includeRawHTML {
+			result["__raw_html"] = htmlStr
+		}
+	}
+
+	return result, nil
+}
+
+func (s *ScraperService) waitForBrowserPage(page *rod.Page, opTimeout time.Duration, timeoutMs int, pollMs int, wc *WaitConfig) (map[string]interface{}, int64, int64, int64) {
+	out := make(map[string]interface{})
+	var msWaitLoad int64
+	var msWaitStable int64
+	var msWaitSelectors int64
+
+	if wc != nil {
 		if !wc.SkipNavigationWait {
 			t := time.Now()
 			if err := page.Timeout(opTimeout).WaitLoad(); err != nil {
-				debug["wait_load_error"] = err.Error()
+				out["wait_load_error"] = err.Error()
 			} else {
 				msWaitLoad = time.Since(t).Milliseconds()
 			}
@@ -337,7 +438,7 @@ func (s *ScraperService) scrapeBrowser(url string, rule SiteRule, params map[str
 				stableTimeout = opTimeout
 			}
 			if err := page.Timeout(stableTimeout).WaitStable(1 * time.Second); err != nil {
-				debug["wait_stable_error"] = err.Error()
+				out["wait_stable_error"] = err.Error()
 			} else {
 				msWaitStable = time.Since(t).Milliseconds()
 			}
@@ -447,7 +548,7 @@ func (s *ScraperService) scrapeBrowser(url string, rule SiteRule, params map[str
 					st["ok"] = false
 				}
 				st["wait_ms"] = time.Since(t).Milliseconds()
-				debug["min_text_length"] = st
+				out["min_text_length"] = st
 			}
 
 			if wc.RequireImageLoaded {
@@ -472,54 +573,98 @@ func (s *ScraperService) scrapeBrowser(url string, rule SiteRule, params map[str
 					st["ok"] = false
 				}
 				st["wait_ms"] = time.Since(t).Milliseconds()
-				debug["images_loaded"] = st
+				out["images_loaded"] = st
 			}
 
 			msWaitSelectors = time.Since(tSelectors).Milliseconds()
 		}
 
-		debug["selectors"] = selectorStatuses
+		out["selectors"] = selectorStatuses
 	} else {
-		// Default wait
 		t := time.Now()
 		stableTimeout := 4 * time.Second
 		if err := page.Timeout(stableTimeout).WaitStable(1 * time.Second); err != nil {
-			debug["wait_stable_error"] = err.Error()
+			out["wait_stable_error"] = err.Error()
 		} else {
 			msWaitStable = time.Since(t).Milliseconds()
 		}
 	}
 
-	htmlStr, err := page.Timeout(opTimeout).HTML()
-	if err != nil {
-		return nil, err
+	return out, msWaitLoad, msWaitStable, msWaitSelectors
+}
+
+func (s *ScraperService) executeBrowserActions(page *rod.Page, opTimeout time.Duration, timeoutMs int, pollMs int, actions []BrowserAction, stepWC *WaitConfig, ctx map[string]interface{}) error {
+	if len(actions) == 0 {
+		return nil
 	}
 
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStr))
-	if err != nil {
-		return nil, err
-	}
+	for i, a := range actions {
+		typ := strings.TrimSpace(strings.ToLower(a.Type))
+		switch typ {
+		case "click":
+			selRaw := s.processTemplate(a.Selector, ctx)
+			sel := strings.TrimSpace(fmt.Sprintf("%v", selRaw))
+			if sel == "" {
+				return fmt.Errorf("browser action %d click: selector is required", i)
+			}
 
-	result := s.extractFields(doc.Selection, rule.Extract)
-	s.applyBrowserDOMOverrides(page, opTimeout, rule.Extract, result)
+			deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
+			var lastErr error
+			for time.Now().Before(deadline) {
+				el, err := page.Timeout(2 * time.Second).Element(sel)
+				if err == nil && el != nil {
+					if err := el.Click(proto.InputMouseButtonLeft, 1); err == nil {
+						lastErr = nil
+						break
+					} else {
+						lastErr = err
+					}
+				} else {
+					lastErr = err
+				}
+				time.Sleep(time.Duration(pollMs) * time.Millisecond)
+			}
+			if lastErr != nil {
+				return fmt.Errorf("browser action %d click selector %s failed: %w", i, sel, lastErr)
+			}
 
-	if debugEnabled {
-		debug["wait_load_ms"] = msWaitLoad
-		debug["wait_stable_ms"] = msWaitStable
-		debug["wait_selectors_ms"] = msWaitSelectors
-		debug["total_ms"] = time.Since(tStart).Milliseconds()
-		debug["html_length"] = len(htmlStr)
-		if rs, e := page.Timeout(2*time.Second).Eval(`() => document.readyState`); e == nil {
-			debug["ready_state"] = rs.Value.String()
+			_ = page.Timeout(opTimeout).WaitLoad()
+
+		case "eval":
+			scriptRaw := s.processTemplate(a.Script, ctx)
+			script := strings.TrimSpace(fmt.Sprintf("%v", scriptRaw))
+			if script == "" {
+				return fmt.Errorf("browser action %d eval: script is required", i)
+			}
+			if _, err := page.Timeout(opTimeout).Eval(script); err != nil {
+				return fmt.Errorf("browser action %d eval failed: %w", i, err)
+			}
+
+		case "":
+			return fmt.Errorf("browser action %d: type is required", i)
+
+		default:
+			return fmt.Errorf("browser action %d: unknown type %s", i, typ)
 		}
 
-		result["__debug"] = debug
-		if includeRawHTML {
-			result["__raw_html"] = htmlStr
+		wc := stepWC
+		if a.WaitConfig != nil {
+			wc = a.WaitConfig
+		}
+		if wc != nil {
+			tms := timeoutMs
+			pms := pollMs
+			if wc.Timeout > 0 {
+				tms = wc.Timeout
+			}
+			if wc.PollInterval > 0 {
+				pms = wc.PollInterval
+			}
+			_, _, _, _ = s.waitForBrowserPage(page, time.Duration(tms)*time.Millisecond, tms, pms, wc)
 		}
 	}
 
-	return result, nil
+	return nil
 }
 
 func (s *ScraperService) applyBrowserDOMOverrides(page *rod.Page, opTimeout time.Duration, rules []FieldRule, result map[string]interface{}) {

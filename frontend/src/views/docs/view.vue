@@ -1,6 +1,8 @@
 <template>
-  <component :is="docComponent" v-if="docComponent" />
-  <div v-else class="p-4">Dokumen tidak ditemukan.</div>
+  <div class="doc">
+    <component :is="docComponent" v-if="docComponent" />
+    <div v-else class="p-4">Dokumen tidak ditemukan.</div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -35,3 +37,22 @@ const docComponent = computed(() => {
   return null
 })
 </script>
+
+<style scoped>
+.doc :deep(:not(pre) > code) {
+  font-family:
+    'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.95em;
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  background: rgba(30, 30, 30, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #dcdcaa;
+  user-select: text;
+}
+
+.doc :deep(pre > code) {
+  user-select: text;
+}
+</style>

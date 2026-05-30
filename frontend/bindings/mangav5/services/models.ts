@@ -91,6 +91,90 @@ export class APIWorkflow {
     }
 }
 
+export class BrowserAction {
+    "type": string;
+    "selector"?: string;
+    "script"?: string;
+    "wait_config"?: WaitConfig | null;
+
+    /** Creates a new BrowserAction instance. */
+    constructor($$source: Partial<BrowserAction> = {}) {
+        if (!("type" in $$source)) {
+            this["type"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BrowserAction instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BrowserAction {
+        const $$createField3_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("wait_config" in $$parsedSource) {
+            $$parsedSource["wait_config"] = $$createField3_0($$parsedSource["wait_config"]);
+        }
+        return new BrowserAction($$parsedSource as Partial<BrowserAction>);
+    }
+}
+
+export class BrowserFlow {
+    "steps": BrowserStep[];
+
+    /** Creates a new BrowserFlow instance. */
+    constructor($$source: Partial<BrowserFlow> = {}) {
+        if (!("steps" in $$source)) {
+            this["steps"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BrowserFlow instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BrowserFlow {
+        const $$createField0_0 = $$createType7;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("steps" in $$parsedSource) {
+            $$parsedSource["steps"] = $$createField0_0($$parsedSource["steps"]);
+        }
+        return new BrowserFlow($$parsedSource as Partial<BrowserFlow>);
+    }
+}
+
+export class BrowserStep {
+    "url": string;
+    "wait_config"?: WaitConfig | null;
+    "actions"?: BrowserAction[];
+
+    /** Creates a new BrowserStep instance. */
+    constructor($$source: Partial<BrowserStep> = {}) {
+        if (!("url" in $$source)) {
+            this["url"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new BrowserStep instance from a string or object.
+     */
+    static createFrom($$source: any = {}): BrowserStep {
+        const $$createField1_0 = $$createType5;
+        const $$createField2_0 = $$createType9;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("wait_config" in $$parsedSource) {
+            $$parsedSource["wait_config"] = $$createField1_0($$parsedSource["wait_config"]);
+        }
+        if ("actions" in $$parsedSource) {
+            $$parsedSource["actions"] = $$createField2_0($$parsedSource["actions"]);
+        }
+        return new BrowserStep($$parsedSource as Partial<BrowserStep>);
+    }
+}
+
 export class DebugConfig {
     "enabled": boolean;
     "include_raw_html"?: boolean | null;
@@ -249,9 +333,9 @@ export class FieldRule {
      * Creates a new FieldRule instance from a string or object.
      */
     static createFrom($$source: any = {}): FieldRule {
-        const $$createField5_0 = $$createType5;
-        const $$createField6_0 = $$createType7;
-        const $$createField9_0 = $$createType8;
+        const $$createField5_0 = $$createType11;
+        const $$createField6_0 = $$createType13;
+        const $$createField9_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("replace" in $$parsedSource) {
             $$parsedSource["replace"] = $$createField5_0($$parsedSource["replace"]);
@@ -319,7 +403,7 @@ export class ScrapeResult {
      * Creates a new ScrapeResult instance from a string or object.
      */
     static createFrom($$source: any = {}): ScrapeResult {
-        const $$createField2_0 = $$createType8;
+        const $$createField2_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("images" in $$parsedSource) {
             $$parsedSource["images"] = $$createField2_0($$parsedSource["images"]);
@@ -340,6 +424,7 @@ export class SiteRule {
      */
     "strategy": string;
     "entry"?: EntryRule | null;
+    "browser"?: BrowserFlow | null;
     "api"?: APIWorkflow | null;
     "extract": FieldRule[];
     "wait_config"?: WaitConfig | null;
@@ -367,12 +452,13 @@ export class SiteRule {
      * Creates a new SiteRule instance from a string or object.
      */
     static createFrom($$source: any = {}): SiteRule {
-        const $$createField1_0 = $$createType8;
-        const $$createField3_0 = $$createType10;
-        const $$createField4_0 = $$createType12;
-        const $$createField5_0 = $$createType7;
-        const $$createField6_0 = $$createType14;
-        const $$createField7_0 = $$createType16;
+        const $$createField1_0 = $$createType14;
+        const $$createField3_0 = $$createType16;
+        const $$createField4_0 = $$createType18;
+        const $$createField5_0 = $$createType20;
+        const $$createField6_0 = $$createType13;
+        const $$createField7_0 = $$createType5;
+        const $$createField8_0 = $$createType22;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("domains" in $$parsedSource) {
             $$parsedSource["domains"] = $$createField1_0($$parsedSource["domains"]);
@@ -380,17 +466,20 @@ export class SiteRule {
         if ("entry" in $$parsedSource) {
             $$parsedSource["entry"] = $$createField3_0($$parsedSource["entry"]);
         }
+        if ("browser" in $$parsedSource) {
+            $$parsedSource["browser"] = $$createField4_0($$parsedSource["browser"]);
+        }
         if ("api" in $$parsedSource) {
-            $$parsedSource["api"] = $$createField4_0($$parsedSource["api"]);
+            $$parsedSource["api"] = $$createField5_0($$parsedSource["api"]);
         }
         if ("extract" in $$parsedSource) {
-            $$parsedSource["extract"] = $$createField5_0($$parsedSource["extract"]);
+            $$parsedSource["extract"] = $$createField6_0($$parsedSource["extract"]);
         }
         if ("wait_config" in $$parsedSource) {
-            $$parsedSource["wait_config"] = $$createField6_0($$parsedSource["wait_config"]);
+            $$parsedSource["wait_config"] = $$createField7_0($$parsedSource["wait_config"]);
         }
         if ("debug" in $$parsedSource) {
-            $$parsedSource["debug"] = $$createField7_0($$parsedSource["debug"]);
+            $$parsedSource["debug"] = $$createField8_0($$parsedSource["debug"]);
         }
         return new SiteRule($$parsedSource as Partial<SiteRule>);
     }
@@ -417,8 +506,8 @@ export class WaitConfig {
      * Creates a new WaitConfig instance from a string or object.
      */
     static createFrom($$source: any = {}): WaitConfig {
-        const $$createField0_0 = $$createType8;
-        const $$createField1_0 = $$createType8;
+        const $$createField0_0 = $$createType14;
+        const $$createField1_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("container_selectors" in $$parsedSource) {
             $$parsedSource["container_selectors"] = $$createField0_0($$parsedSource["container_selectors"]);
@@ -530,16 +619,22 @@ const $$createType0 = $Create.Map($Create.Any, $Create.Any);
 const $$createType1 = APIRequest.createFrom;
 const $$createType2 = APIStep.createFrom;
 const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = ReplaceRule.createFrom;
+const $$createType4 = WaitConfig.createFrom;
 const $$createType5 = $Create.Nullable($$createType4);
-const $$createType6 = FieldRule.createFrom;
+const $$createType6 = BrowserStep.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = $Create.Array($Create.Any);
-const $$createType9 = EntryRule.createFrom;
-const $$createType10 = $Create.Nullable($$createType9);
-const $$createType11 = APIWorkflow.createFrom;
-const $$createType12 = $Create.Nullable($$createType11);
-const $$createType13 = WaitConfig.createFrom;
-const $$createType14 = $Create.Nullable($$createType13);
-const $$createType15 = DebugConfig.createFrom;
+const $$createType8 = BrowserAction.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = ReplaceRule.createFrom;
+const $$createType11 = $Create.Nullable($$createType10);
+const $$createType12 = FieldRule.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = $Create.Array($Create.Any);
+const $$createType15 = EntryRule.createFrom;
 const $$createType16 = $Create.Nullable($$createType15);
+const $$createType17 = BrowserFlow.createFrom;
+const $$createType18 = $Create.Nullable($$createType17);
+const $$createType19 = APIWorkflow.createFrom;
+const $$createType20 = $Create.Nullable($$createType19);
+const $$createType21 = DebugConfig.createFrom;
+const $$createType22 = $Create.Nullable($$createType21);

@@ -395,6 +395,154 @@ Jika di kemudian hari situs berubah:
 
 ---
 
+### 9.7. Fitur Lanjutan Strategy `"browser"`: `browser.steps` + `actions`
+
+Beberapa situs (terutama yang heavy JS) tidak bisa di-scrape hanya dengan membuka 1 URL lalu mengambil HTML, karena:
+
+- Data gambar/chapters baru muncul setelah halaman lain dibuka terlebih dulu (stateful flow).
+- Halaman reader baru merender setelah ada interaksi pengguna (click pada elemen tertentu).
+
+Untuk kasus seperti ini, gunakan fitur `browser.steps` agar dalam **1 kali scrape** aplikasi bisa:
+
+1. Membuka halaman A (mis. detail)
+2. Menjalankan aksi (mis. click pada item chapter)
+3. Berpindah ke halaman B (mis. reader)
+4. Baru melakukan `extract` pada halaman terakhir
+
+#### 9.7.1. Struktur Umum
+
+Tambahkan object `browser` di root rule:
+
+```json
+{
+  "strategy": "browser",
+  "browser": {
+    "steps": [
+      {
+        "url": "https://example.com/detail?slug={id}",
+        "wait_config": {
+          "content_selectors": [".chapter-item"]
+        },
+        "actions": [
+          { "type": "click", "selector": ".chapter-item[data-num='{chapter_num}']" }
+        ]
+      },
+      {
+        "url": "https://example.com/reader?slug={chapter_slug}",
+        "wait_config": {
+          "content_selectors": ["#reader img"]
+        }
+      }
+    ]
+  }
+}
+```
+
+Keterangan:
+
+- `browser.steps[]` dieksekusi berurutan pada **tab yang sama**.
+- `steps[].url` bisa berisi placeholder `{...}` yang akan diganti dari context.
+- `steps[].wait_config` opsional: digunakan untuk menunggu halaman step tersebut “siap” sebelum lanjut.
+- `steps[].actions[]` opsional: menjalankan interaksi (click / eval) di halaman step tersebut.
+
+#### 9.7.2. Placeholder `{...}` dan Context yang Tersedia
+
+Placeholder akan diganti dari context yang dibangun dari:
+
+- `id` → hasil ekstraksi dari URL input (override URL) berdasarkan `entry.url` / `entry.regex`
+- Query param dari URL input → otomatis masuk context  
+  Contoh: jika Chapter Rule URL adalah `...?chapter_num=50.1&manga_slug=foo`  
+  maka context berisi `chapter_num = "50.1"` dan `manga_slug = "foo"`
+
+Praktiknya, ini memungkinkan pembuat rule “mengirim parameter tambahan” lewat `chapter_id` di Manga Rule, lalu dipakai oleh Chapter Rule.
+
+#### 9.7.3. `actions`: Jenis yang Didukung
+
+- `click`
+  - Klik elemen berdasarkan CSS selector.
+  - Cocok untuk kasus “harus user click” agar event listener di web berjalan.
+  - Properti:
+    - `selector` (wajib)
+    - `wait_config` (opsional) → dipakai setelah click jika perlu menunggu DOM berubah / pindah halaman
+
+- `eval`
+  - Menjalankan JavaScript di halaman.
+  - Cocok untuk:
+    - Dispatch click custom (mis. `dispatchEvent`)
+    - Scroll untuk memicu lazy-load
+    - Mengisi localStorage/sessionStorage jika dibutuhkan oleh situs
+  - Properti:
+    - `script` (wajib) → JS function string yang dieksekusi di browser (`page.Eval`)
+    - `wait_config` (opsional) → dipakai setelah script dieksekusi
+
+#### 9.7.4. Urutan `wait_config` yang Dipakai
+
+Untuk strategy `"browser"`, aturan menunggu bisa ditaruh di beberapa tempat:
+
+- `wait_config` di root rule (default)
+- `browser.steps[].wait_config` (override untuk step tertentu)
+- `browser.steps[].actions[].wait_config` (override setelah action tertentu)
+
+Urutan prioritasnya: `actions[].wait_config` → `steps[].wait_config` → `rule.wait_config`.
+
+#### 9.7.5. Contoh Kasus Nyata: Detail → Click Chapter Item → Reader (stateful)
+
+Untuk situs yang menyimpan data gambar di halaman detail lalu merendernya di reader:
+
+1. **Manga Rule** menghasilkan `chapter_id` yang membawa parameter tambahan, misalnya:
+   - `https://mikoroku.com/detail?slug=imaizumin-deep&chapter_num=50.1`
+2. **Chapter Rule**:
+   - Step 1 membuka detail pakai `{id}` (slug manga)
+   - Step 1 click item chapter berdasarkan `{chapter_num}`
+   - Tunggu sampai `#reader img` muncul
+   - Extract `pages` dari `#reader img`
+
+Contoh Chapter Rule:
+
+```json
+{
+  "site": "mikoroku",
+  "domains": ["mikoroku.com"],
+  "strategy": "browser",
+  "entry": { "url": "https://mikoroku.com/detail?slug={id}" },
+  "browser": {
+    "steps": [
+      {
+        "url": "https://mikoroku.com/detail?slug={id}",
+        "wait_config": {
+          "content_selectors": [".chapter-item"],
+          "timeout_ms": 15000,
+          "poll_ms": 150
+        },
+        "actions": [
+          {
+            "type": "click",
+            "selector": ".chapter-item[data-num='{chapter_num}']",
+            "wait_config": {
+              "content_selectors": ["#reader img"],
+              "timeout_ms": 15000,
+              "poll_ms": 150,
+              "skip_render_stable": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "extract": [
+    {
+      "name": "pages",
+      "type": "css",
+      "selector": "#reader img",
+      "multiple": true,
+      "attr": ["data-original", "data-src", "src"]
+    }
+  ]
+}
+```
+
+Jika situs tidak punya atribut `data-num`, alternatifnya gunakan `data-index` (mis. `.chapter-item[data-index='{chapter_index}']`) dan isi `chapter_index` lewat query param yang disimpan di `chapter_id`.
+
 ## 10. Penjelasan Lengkap Fitur `extract` dan Tipe `type`
 
 Bagian ini fokus ke cara konfigurasi **field di dalam `extract`**, karena di sinilah Anda mengatur:

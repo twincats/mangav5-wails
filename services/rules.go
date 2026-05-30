@@ -6,10 +6,28 @@ type SiteRule struct {
 	Domains    []string     `json:"domains"`
 	Strategy   string       `json:"strategy"` // static, browser, api, auto
 	Entry      *EntryRule   `json:"entry,omitempty"`
+	Browser    *BrowserFlow `json:"browser,omitempty"`
 	API        *APIWorkflow `json:"api,omitempty"`
 	Extract    []FieldRule  `json:"extract"`
 	WaitConfig *WaitConfig  `json:"wait_config,omitempty"`
 	Debug      *DebugConfig `json:"debug,omitempty"`
+}
+
+type BrowserFlow struct {
+	Steps []BrowserStep `json:"steps"`
+}
+
+type BrowserStep struct {
+	URL        string          `json:"url"`
+	WaitConfig *WaitConfig     `json:"wait_config,omitempty"`
+	Actions    []BrowserAction `json:"actions,omitempty"`
+}
+
+type BrowserAction struct {
+	Type       string      `json:"type"`
+	Selector   string      `json:"selector,omitempty"`
+	Script     string      `json:"script,omitempty"`
+	WaitConfig *WaitConfig `json:"wait_config,omitempty"`
 }
 
 type DebugConfig struct {

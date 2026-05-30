@@ -32,6 +32,78 @@
       "required": ["url"]
     },
 
+    "browser": {
+      "type": "object",
+      "required": ["steps"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["url"],
+            "properties": {
+              "url": { "type": "string" },
+              "wait_config": {
+                "type": "object",
+                "properties": {
+                  "container_selectors": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "content_selectors": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "min_text_length": { "type": "integer" },
+                  "require_image_loaded": { "type": "boolean" },
+                  "timeout_ms": { "type": "integer" },
+                  "poll_ms": { "type": "integer" },
+                  "skip_waits": { "type": "boolean" },
+                  "skip_render_stable": { "type": "boolean" },
+                  "skip_navigation_wait": { "type": "boolean" },
+                  "navigation_timeout_ms": { "type": "integer" }
+                }
+              },
+              "actions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["type"],
+                  "properties": {
+                    "type": { "type": "string", "enum": ["click", "eval"] },
+                    "selector": { "type": "string" },
+                    "script": { "type": "string" },
+                    "wait_config": {
+                      "type": "object",
+                      "properties": {
+                        "container_selectors": {
+                          "type": "array",
+                          "items": { "type": "string" }
+                        },
+                        "content_selectors": {
+                          "type": "array",
+                          "items": { "type": "string" }
+                        },
+                        "min_text_length": { "type": "integer" },
+                        "require_image_loaded": { "type": "boolean" },
+                        "timeout_ms": { "type": "integer" },
+                        "poll_ms": { "type": "integer" },
+                        "skip_waits": { "type": "boolean" },
+                        "skip_render_stable": { "type": "boolean" },
+                        "skip_navigation_wait": { "type": "boolean" },
+                        "navigation_timeout_ms": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
     "wait_config": {
       "type": "object",
       "properties": {
