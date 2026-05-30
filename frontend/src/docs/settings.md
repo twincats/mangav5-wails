@@ -47,6 +47,9 @@ Di bagian paling atas terdapat:
    - Tombol **Download** di toolbar Settings digunakan sebagai **uji coba cepat**, bukan untuk download manga utama.
    - Tombol ini hanya aktif jika hasil di **Scrape Result** berisi daftar halaman yang valid.
    - Saat ditekan, aplikasi mencoba mengunduh gambar berdasarkan hasil tersebut ke lokasi uji (untuk kebutuhan testing).
+   - Lokasi uji mengikuti konfigurasi **Manga Directory**:
+     - Output: `<Manga Directory>/__settings_test/<site_key>/...`
+     - Jika Manga Directory belum di-set, tombol ini akan meminta Anda mengatur folder terlebih dulu.
 
 4. **Tombol Save Rules**
    - Digunakan untuk menyimpan rule yang sedang Anda kerjakan ke database.
@@ -137,6 +140,16 @@ Area editor terbagi menjadi dua bagian utama:
   - Mengecek apakah rule mengambil data yang masuk akal.
   - Menjadi dasar test untuk tombol **Download** di halaman Settings.
 
+### 4.4. Tab Raw HTML
+
+- Tab **Raw HTML** menampilkan HTML mentah yang didapat saat proses scrape.
+- Gunanya terutama untuk pembuat rule:
+  - Memastikan selector CSS yang dipakai memang ada di HTML yang diterima aplikasi.
+  - Membandingkan HTML aktual vs yang terlihat di browser (beberapa situs merender berbeda jika ada proteksi / lazy-load).
+- Catatan:
+  - Tidak semua scrape selalu mengembalikan Raw HTML (tergantung strategy dan sumber data).
+  - Jika hasil scrape memuat field `__raw_html`, aplikasi akan menyembunyikan field tersebut dari tab **Scrape Result** dan menampilkannya di tab **Raw HTML**.
+
 ---
 
 ## 5. Modal Load Rules
@@ -174,6 +187,7 @@ Tombol dengan ikon **PlaylistAddFilled** di sisi kanan baris kedua membuka dialo
 Setelah disimpan:
 
 - Folder ini akan dipakai sebagai lokasi utama penyimpanan manga oleh fitur download di halaman lain.
+- Folder ini juga dipakai sebagai base folder untuk **Download (test)** di halaman Settings.
 - Anda tetap bisa mengubahnya lagi jika perlu.
 
 ---
@@ -606,6 +620,13 @@ Field umum yang sering dipakai:
   - Contoh:
     - Mengambil ID dari URL: `"/chapter/([^/]+)"`.
 
+- `replace`
+  - Dipakai untuk mengganti teks menggunakan **regex replace** setelah nilai berhasil diambil.
+  - Berguna untuk:
+    - Menghapus prefix/suffix (mis. `"Chapter "`).
+    - Membersihkan whitespace berlebih.
+    - Menghapus query string yang tidak perlu, dsb.
+
 - `children`
   - Dipakai ketika field `multiple` berisi objek kompleks.
   - Contoh:
@@ -667,6 +688,45 @@ Dengan `regex`, Anda bisa memotong URL:
 ```
 
 Ini berguna kalau Anda hanya ingin mengambil ID di tengah URL.
+
+Dengan `replace`, Anda bisa membersihkan hasil akhir menggunakan regex replace.
+
+Contoh: buang prefix "Chapter " (case-insensitive) dari judul chapter:
+
+```json
+{
+  "name": "chapter",
+  "type": "css",
+  "selector": ".chapter-title",
+  "trim": true,
+  "replace": {
+    "pattern": "(?i)^chapter\\s+",
+    "with": ""
+  }
+}
+```
+
+Contoh: bersihkan whitespace berlebih menjadi satu spasi:
+
+```json
+{
+  "name": "title",
+  "type": "css",
+  "selector": "h1",
+  "trim": true,
+  "replace": {
+    "pattern": "\\s+",
+    "with": " "
+  }
+}
+```
+
+Urutan pemrosesan yang dipakai aplikasi:
+
+- Untuk `type: "css"`:
+  - Ambil `attr` (jika ada) atau text elemen → `trim` → `regex` → `replace`
+- Untuk `type: "json"`:
+  - Ambil string dari `path` → `regex` → `replace`
 
 ### 10.3. Tipe `type: "json"`
 

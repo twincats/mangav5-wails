@@ -1,109 +1,132 @@
 <template>
-  <div>
-    <div class="flex gap-2 items-center mb-2">
-      <n-input-group>
-        <n-input v-model:value="downloadUrl" placeholder="Enter download URL" />
-        <n-button tertiary type="primary" @click="fetchScrapeManga">
-          GO
+  <n-spin :show="scrapeLoading" description="Scraping...">
+    <div>
+      <div class="flex gap-2 items-center mb-2">
+        <n-input-group>
+          <n-input
+            v-model:value="downloadUrl"
+            placeholder="Enter download URL"
+            :disabled="isBusy"
+          />
+          <n-button
+            tertiary
+            type="primary"
+            :loading="scrapeLoading"
+            :disabled="downloadingSingle || downloadingMultiple"
+            @click="fetchScrapeManga"
+          >
+            GO
+          </n-button>
+        </n-input-group>
+        <n-button
+          type="primary"
+          secondary
+          :disabled="isBusy"
+          @click="clearDownloadInput"
+        >
+          <template #icon>
+            <n-icon><CancelRound /></n-icon>
+          </template>
         </n-button>
-      </n-input-group>
-      <n-button type="primary" secondary @click="clearDownloadInput">
-        <template #icon>
-          <n-icon><CancelRound /></n-icon>
-        </template>
-      </n-button>
-      <n-button
-        type="primary"
-        secondary
-        :disabled="checkedRowKeysRef.length === 0"
-        @click="downloadMultiple"
-      >
-        <template #icon>
-          <n-icon><DownloadFilled /></n-icon>
-        </template>
-      </n-button>
-    </div>
-    <n-scrollbar style="max-height: calc(100vh - 160px)">
-      <div class="bg-dark-400 rounded-md p-2 mb-2">
-        <div class="text-sm font-medium">Select site rule:</div>
-        <div class="bg-dark-500 p-2 rounded-md mt-1 overflow-auto">
-          <div class="min-h-[52.72px] flex items-center">
-            <n-radio-group v-model:value="selectedSiteKey" name="radiogroup">
-              <n-space>
-                <n-radio
-                  v-for="site in listScrapeRule"
-                  :key="site.id"
-                  :value="site.site_key"
-                  :label="site.name"
-                />
-              </n-space>
-            </n-radio-group>
+        <n-button
+          type="primary"
+          secondary
+          :loading="downloadingMultiple"
+          :disabled="
+            checkedRowKeysRef.length === 0 ||
+            scrapeLoading ||
+            downloadingSingle ||
+            downloadingMultiple
+          "
+          @click="downloadMultiple"
+        >
+          <template #icon>
+            <n-icon><DownloadFilled /></n-icon>
+          </template>
+        </n-button>
+      </div>
+      <n-scrollbar style="max-height: calc(100vh - 160px)">
+        <div class="bg-dark-400 rounded-md p-2 mb-2">
+          <div class="text-sm font-medium">Select site rule:</div>
+          <div class="bg-dark-500 p-2 rounded-md mt-1 overflow-auto">
+            <div class="min-h-[52.72px] flex items-center">
+              <n-radio-group v-model:value="selectedSiteKey" name="radiogroup">
+                <n-space>
+                  <n-radio
+                    v-for="site in listScrapeRule"
+                    :key="site.id"
+                    :value="site.site_key"
+                    :label="site.name"
+                  />
+                </n-space>
+              </n-radio-group>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="bg-dark-400 rounded-md p-2 my-2 min-h-[100px]">
-        <n-h4 align-text>
-          <n-text type="primary">
-            {{ mangaData?.title }}
-          </n-text>
-        </n-h4>
-        <div v-if="selectedChapters.length > 0">
-          Download Chapters : {{ selectedChapters.length }} Chapter<br />
-          Selected Chapters : {{ selectedChapters.join(', ') }}
-        </div>
-      </div>
-      <div>
-        <n-data-table
-          :columns="columns"
-          :bordered="false"
-          :single-line="false"
-          :data="chapterData"
-          :row-key="rowKey"
-          :size="'small'"
-          :pagination="{
-            pageSize: 10,
-          }"
-          striped
-          v-model:checked-row-keys="checkedRowKeysRef"
-          :row-props="rowProps"
-        />
-      </div>
-    </n-scrollbar>
-    <!-- modal progress -->
-    <n-modal
-      v-model:show="progressModal"
-      :mask-closable="false"
-      preset="card"
-      class="w-[600px]"
-      title="Download Progress"
-    >
-      <div class="w-full text-center mb-2">
-        <div class="mb-2" v-if="checkedRowKeysRef.length > 0">
-          Manga Chapter
-          <n-progress
-            type="line"
-            :percentage="progress.chapterPercentage"
-            indicator-placement="inside"
-            processing
-            :border-radius="4"
-          />
-          {{ progress.indexChapter }} / {{ progress.totalChapter }}
+        <div class="bg-dark-400 rounded-md p-2 my-2 min-h-[100px]">
+          <n-h4 align-text>
+            <n-text type="primary">
+              {{ mangaData?.title }}
+            </n-text>
+          </n-h4>
+          <div v-if="selectedChapters.length > 0">
+            Download Chapters : {{ selectedChapters.length }} Chapter<br />
+            Selected Chapters : {{ selectedChapters.join(', ') }}
+          </div>
         </div>
         <div>
-          Chapter Pages
-          <n-progress
-            type="line"
-            status="success"
-            :percentage="progress.downloadPercentage"
-            indicator-placement="inside"
-            processing
-            :border-radius="4"
+          <n-data-table
+            :columns="columns"
+            :bordered="false"
+            :single-line="false"
+            :data="chapterData"
+            :row-key="rowKey"
+            :size="'small'"
+            :pagination="{
+              pageSize: 10,
+            }"
+            striped
+            v-model:checked-row-keys="checkedRowKeysRef"
+            :row-props="rowProps"
           />
-          {{ progress.indexPage }} / {{ progress.totalPages }}
         </div>
-      </div>
-    </n-modal>
-  </div>
+      </n-scrollbar>
+      <!-- modal progress -->
+      <n-modal
+        v-model:show="progressModal"
+        :mask-closable="false"
+        preset="card"
+        class="w-[600px]"
+        title="Download Progress"
+      >
+        <div class="w-full text-center mb-2">
+          <div class="mb-2" v-if="checkedRowKeysRef.length > 0">
+            Manga Chapter
+            <n-progress
+              type="line"
+              :percentage="progress.chapterPercentage"
+              indicator-placement="inside"
+              processing
+              :border-radius="4"
+            />
+            {{ progress.indexChapter }} / {{ progress.totalChapter }}
+          </div>
+          <div>
+            Chapter Pages
+            <n-progress
+              type="line"
+              status="success"
+              :percentage="progress.downloadPercentage"
+              indicator-placement="inside"
+              processing
+              :border-radius="4"
+            />
+            {{ progress.indexPage }} / {{ progress.totalPages }}
+          </div>
+        </div>
+      </n-modal>
+    </div>
+  </n-spin>
 </template>
 
 <script setup lang="ts">
@@ -169,13 +192,46 @@ const progress = reactive({
   totalChapter: 0,
 })
 
+const scrapeLoading = ref(false)
+const downloadingSingle = ref(false)
+const downloadingMultiple = ref(false)
+const downloadingChapterId = ref<string | null>(null)
+const isBusy = computed(
+  () =>
+    scrapeLoading.value || downloadingSingle.value || downloadingMultiple.value,
+)
+
+const resetPageProgress = () => {
+  progress.indexPage = 0
+  progress.totalPages = 0
+  progress.downloadPercentage = 0
+}
+
+const resetChapterProgress = (totalChapter: number) => {
+  progress.indexChapter = 0
+  progress.totalChapter = totalChapter
+  progress.chapterPercentage = 0
+}
+
+const formatErrorMessage = (err: unknown): string => {
+  if (!err) return 'Unknown error'
+  if (typeof err === 'string') return err
+  if (err instanceof Error) return err.message || 'Unknown error'
+  try {
+    return JSON.stringify(err)
+  } catch {
+    return 'Unknown error'
+  }
+}
+
 const mangaIdDb = ref<number>(0)
-const downloadOneChapter = async (chapterId: string) => {
+const downloadOneChapter = async (chapterId: string): Promise<boolean> => {
+  const chapterInfo = findChapterByChapterId(chapterId)
   try {
     // fetch rule data
     const rule = await getScrapeRule(selectedSiteKey.value)
     if (!rule) {
-      return
+      return false
     }
     const chapterRule = JSON.parse(rule.chapter_rule_json)
     // scrape chapter list images
@@ -185,14 +241,12 @@ const downloadOneChapter = async (chapterId: string) => {
     )) as unknown as ChapterPages
 
     const listImages = chapterImages.pages
-    const chapterInfo = findChapterByChapterId(chapterId)
     const outputDir = await getDownloadDir(
       mangaData.value?.title || 'untitled',
       chapterInfo?.chapter || '000',
     )
     const chapterPath = `${safeWindowsDirectoryName(mangaData.value?.title || 'untitled')}/${chapterInfo?.chapter || '000'}`
 
-    progressModal.value = true
     // download chapter images
     await DownloadService.DownloadImages(listImages, outputDir, null)
     let StatusDownloadDover: number | boolean = 0
@@ -263,9 +317,14 @@ const downloadOneChapter = async (chapterId: string) => {
     }
 
     message.success(`Chapter ${chapterInfo?.chapter} downloaded successfully`)
+    return true
   } catch (error) {
-    message.error('Failed to download chapter')
-    progressModal.value = false
+    const chapLabel = chapterInfo?.chapter ? ` ${chapterInfo.chapter}` : ''
+    message.error(
+      `Failed to download chapter${chapLabel}: ${formatErrorMessage(error)}`,
+    )
+    console.error(error)
+    return false
   }
 }
 // download progress event
@@ -286,23 +345,45 @@ const downloadMultiple = async () => {
     message.error('Please select at least one chapter')
     return
   }
+  if (downloadingSingle.value || downloadingMultiple.value) return
+
+  downloadingMultiple.value = true
   progressModal.value = true
-  progress.indexChapter = 0
-  progress.totalChapter = checkedRowKeysRef.value.length
-  for (const key of checkedRowKeysRef.value) {
-    const chapterId = key as string
-    await downloadOneChapter(chapterId)
-    progress.indexChapter++
-    progress.chapterPercentage = Math.round(
-      (progress.indexChapter / progress.totalChapter) * 100,
-    )
+  resetPageProgress()
+  resetChapterProgress(checkedRowKeysRef.value.length)
+
+  const failedChapters: string[] = []
+  try {
+    for (const key of checkedRowKeysRef.value) {
+      const chapterId = key as string
+      resetPageProgress()
+      const ok = await downloadOneChapter(chapterId)
+      if (!ok) failedChapters.push(chapterId)
+
+      progress.indexChapter++
+      progress.chapterPercentage = Math.round(
+        (progress.indexChapter / progress.totalChapter) * 100,
+      )
+    }
+  } finally {
+    downloadingMultiple.value = false
+    setTimeout(() => {
+      if (!downloadingSingle.value) progressModal.value = false
+    }, 800)
   }
-  setTimeout(() => {
-    progressModal.value = false
-  }, 2000)
+
+  if (failedChapters.length > 0) {
+    const failedNumbers = failedChapters
+      .map(id => findChapterByChapterId(id)?.chapter ?? id)
+      .join(', ')
+    message.error(`Some chapters failed: ${failedNumbers}`)
+  } else {
+    message.success('All chapters downloaded successfully')
+  }
 }
 
 const fetchScrapeManga = async () => {
+  if (scrapeLoading.value) return
   if (!downloadUrl.value) {
     const clip = await Clipboard.Text()
     if (clip && isValidUrl(clip)) {
@@ -331,6 +412,7 @@ const fetchScrapeManga = async () => {
       return
     }
   }
+  scrapeLoading.value = true
   try {
     const rule = await getScrapeRule(selectedSiteKey.value)
     if (!rule) {
@@ -363,7 +445,10 @@ const fetchScrapeManga = async () => {
     // const fe
     mangaData.value = result
   } catch (error) {
-    message.error('Failed to scrape manga')
+    message.error(`Failed to scrape manga: ${formatErrorMessage(error)}`)
+    console.error(error)
+  } finally {
+    scrapeLoading.value = false
   }
 }
 
@@ -505,12 +590,21 @@ function createColumns({
       align: 'center',
       width: 100,
       render(row) {
+        const rowLoading =
+          downloadingSingle.value &&
+          downloadingChapterId.value === row.chapter_id
+        const disabled =
+          checkedRowKeysRef.value.length > 0 ||
+          scrapeLoading.value ||
+          downloadingMultiple.value ||
+          (downloadingSingle.value && !rowLoading)
         return h(
           NButton,
           {
             size: 'small',
             onClick: () => downloadChapter(row),
-            disabled: checkedRowKeysRef.value.length > 0,
+            disabled,
+            loading: rowLoading,
           },
           { default: () => 'Download' },
         )
@@ -521,8 +615,21 @@ function createColumns({
 
 const columns = createColumns({
   async downloadChapter(rowData: ChapterData) {
-    console.info(`chapter = ${rowData.chapter}`)
-    downloadOneChapter(rowData.chapter_id)
+    if (downloadingSingle.value || downloadingMultiple.value) return
+    downloadingSingle.value = true
+    downloadingChapterId.value = rowData.chapter_id
+    progressModal.value = true
+    resetPageProgress()
+    resetChapterProgress(0)
+    try {
+      await downloadOneChapter(rowData.chapter_id)
+    } finally {
+      downloadingSingle.value = false
+      downloadingChapterId.value = null
+      setTimeout(() => {
+        if (!downloadingMultiple.value) progressModal.value = false
+      }, 800)
+    }
   },
 })
 

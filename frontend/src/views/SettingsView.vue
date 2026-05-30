@@ -252,6 +252,7 @@ import {
   isValidPages,
 } from '../utils/validationHelpers'
 import { setMangaDirectory } from '../utils/configHelper'
+import { safeWindowsDirectoryName } from '../utils/filePathHelper'
 import { NIcon, NInput } from 'naive-ui'
 import { h } from 'vue'
 
@@ -307,21 +308,39 @@ const loadRuleToInput = async (site_key: string) => {
 }
 
 const clickDownloadTest = async () => {
-  console.log('clickDownloadTest')
   if (!resultJson.value) {
-    console.log('resultJson.value is empty')
     return
   }
-  const urlImages: string[] = JSON.parse(resultJson.value).pages
-  try {
-    const res = await DownloadService.DownloadImages(
-      urlImages,
-      'D:/Tutorial/mangago/ikimen',
-      null,
+  if (!mangaDirectory.value?.trim()) {
+    message.error(
+      'Manga Directory belum di-set. Silakan set dulu di tombol konfigurasi folder.',
     )
-    console.log(res)
+    dialogSetConfig()
+    return
+  }
+
+  let urlImages: string[] = []
+  try {
+    urlImages = JSON.parse(resultJson.value).pages
   } catch (error) {
-    console.log(error)
+    message.error('Scrape Result tidak valid (bukan JSON)')
+    return
+  }
+  if (!Array.isArray(urlImages) || urlImages.length === 0) {
+    message.error('Tidak ada pages yang bisa di-download')
+    return
+  }
+
+  const base = mangaDirectory.value.trim().replace(/[\\/]+$/, '')
+  const siteDir = safeWindowsDirectoryName(
+    scrapingRuleInput.site_key || 'default',
+  )
+  const outputDir = `${base}/__settings_test/${siteDir}`
+  try {
+    await DownloadService.DownloadImages(urlImages, outputDir, null)
+    message.success(`Download test selesai: ${outputDir}`)
+  } catch (error) {
+    message.error(`${error}`)
   }
 }
 Events.On('downloadProgress', data => {

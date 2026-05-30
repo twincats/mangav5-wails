@@ -104,7 +104,6 @@
       "properties": {
         "container_selectors": {
           "type": "array",
-          "type": "array",
           "items": { "type": "string" }
         },
         "content_selectors": {
