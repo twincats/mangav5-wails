@@ -1,147 +1,249 @@
 <template>
   <div>
-    <div class="flex gap-2">
-      <n-card class="w-xl" size="small" content-style="padding: 0.5rem;">
-        <span>Quality : </span>
-        <strong>{{ config.quality }}</strong>
-        <br />
-        <n-slider v-model:value="config.quality" :min="50" :max="90" />
-      </n-card>
-      <div class="w-full">
-        <n-button
-          v-if="!config.status_resize"
-          @click="config.status_resize = true"
-          ghost
-          block
-          class="h-full"
-          >Resize</n-button
-        >
-        <n-card v-else size="small" content-style="padding: 0.5rem;">
-          <span>Resize : </span> <strong>{{ config.resize }}</strong>
+    <n-spin :show="ui.running" description="Processing...">
+      <div class="flex gap-2 items-stretch">
+        <n-card class="w-xl" size="small" content-style="padding: 0.5rem;">
+          <span>Quality : </span>
+          <strong>{{ config.quality }}</strong>
           <br />
-          <div class="flex gap-2">
-            <n-button
-              @click="config.status_resize = false"
-              ghost
-              class="w-12"
-              size="small"
-              >R</n-button
-            >
-            <n-slider
-              v-model:value="config.resize"
-              :min="900"
-              :max="1400"
-              :step="50"
-            />
-          </div>
+          <n-slider v-model:value="config.quality" :min="50" :max="90" />
+        </n-card>
+        <div class="w-full">
+          <n-button
+            v-if="!config.status_resize"
+            @click="config.status_resize = true"
+            ghost
+            block
+            class="h-full"
+            >Resize</n-button
+          >
+          <n-card v-else size="small" content-style="padding: 0.5rem;">
+            <span>Resize : </span> <strong>{{ config.resize }}</strong>
+            <br />
+            <div class="flex gap-2">
+              <n-button
+                @click="config.status_resize = false"
+                ghost
+                class="w-12"
+                size="small"
+                >R</n-button
+              >
+              <n-slider
+                v-model:value="config.resize"
+                :min="900"
+                :max="1400"
+                :step="50"
+              />
+            </div>
+          </n-card>
+        </div>
+
+        <n-card class="w-xl" size="small" content-style="padding: 0.5rem;">
+          <span>Delete :</span> <br />
+          <n-radio-group
+            class="w-full flex justify-center"
+            v-model:value="config.delete"
+            name="radiodelete"
+          >
+            <n-space>
+              <n-radio :value="false" label="No" />
+              <n-radio :value="true" label="Yes" />
+            </n-space>
+          </n-radio-group>
+        </n-card>
+        <n-card class="w-xl" size="small" content-style="padding: 0.5rem;">
+          <span>Compress :</span> <br />
+          <n-radio-group
+            class="w-full flex justify-center"
+            v-model:value="config.compress"
+            name="radiocompress"
+          >
+            <n-space>
+              <n-radio :value="false" label="No" />
+              <n-radio :value="true" label="Yes" />
+            </n-space>
+          </n-radio-group>
+        </n-card>
+        <n-card class="w-xl" size="small" content-style="padding: 0.5rem;">
+          <span>Status Read Only :</span> <br />
+          <n-radio-group
+            class="w-full flex justify-center"
+            v-model:value="config.status_read_only"
+            name="radiostatus_read_only"
+          >
+            <n-space>
+              <n-radio :value="false" label="No" />
+              <n-radio :value="true" label="Yes" />
+            </n-space>
+          </n-radio-group>
         </n-card>
       </div>
-
-      <n-card class="w-xl" size="small" content-style="padding: 0.5rem;">
-        <span>Delete :</span> <br />
-        <n-radio-group
-          class="w-full flex justify-center"
-          v-model:value="config.delete"
-          name="radiodelete"
-        >
-          <n-space>
-            <n-radio :value="false" label="No" />
-            <n-radio :value="true" label="Yes" />
-          </n-space>
-        </n-radio-group>
-      </n-card>
-      <n-card class="w-xl" size="small" content-style="padding: 0.5rem;">
-        <span>Compress :</span> <br />
-        <n-radio-group
-          class="w-full flex justify-center"
-          v-model:value="config.compress"
-          name="radiocompress"
-        >
-          <n-space>
-            <n-radio :value="false" label="No" />
-            <n-radio :value="true" label="Yes" />
-          </n-space>
-        </n-radio-group>
-      </n-card>
-      <n-card class="w-xl" size="small" content-style="padding: 0.5rem;">
-        <span>Status Read Only :</span> <br />
-        <n-radio-group
-          class="w-full flex justify-center"
-          v-model:value="config.status_read_only"
-          name="radiostatus_read_only"
-        >
-          <n-space>
-            <n-radio :value="false" label="No" />
-            <n-radio :value="true" label="Yes" />
-          </n-space>
-        </n-radio-group>
-      </n-card>
-    </div>
-    <div class="w-full my-2">
-      <n-input v-model:value="config.search" />
-    </div>
-    <div>
-      <n-scrollbar style="height: calc(100vh - 400px)">
-        <n-list bordered hoverable clickable class="manga-list">
-          <n-list-item
-            v-for="item in mangaListFilter"
-            :key="item.id"
-            :style="{
-              cursor: 'pointer',
-              backgroundColor:
-                selectedManga?.main_title === item.main_title
-                  ? 'rgba(24, 160, 88, 0.18)'
-                  : '',
-            }"
-            @click="selectedManga = item"
+      <div class="w-full my-2">
+        <n-input v-model:value="config.search" />
+      </div>
+      <div class="flex flex-col gap-2" style="height: calc(100vh - 260px)">
+        <n-scrollbar class="flex-1">
+          <n-list bordered hoverable clickable class="manga-list">
+            <n-list-item
+              v-for="item in mangaListFilter"
+              :key="item.id"
+              :style="{
+                cursor: 'pointer',
+                backgroundColor:
+                  selectedManga?.main_title === item.main_title
+                    ? 'rgba(24, 160, 88, 0.18)'
+                    : '',
+              }"
+              @click="selectedManga = item"
+            >
+              {{ item.main_title }}
+            </n-list-item>
+          </n-list>
+        </n-scrollbar>
+        <div class="flex gap-2 justify-end">
+          <n-button tertiary :disabled="ui.running" @click="resetProgress">
+            Reset
+          </n-button>
+          <n-button secondary :disabled="ui.running" @click="openProgress">
+            Progress
+          </n-button>
+          <n-button
+            type="primary"
+            :disabled="!selectedManga || ui.running"
+            :loading="ui.running"
+            @click="startConvert"
           >
-            {{ item.main_title }}
-          </n-list-item>
-        </n-list>
-      </n-scrollbar>
-    </div>
-    <n-modal
-      v-model:show="progressUi.visible"
-      preset="card"
-      class="w-[720px]"
-      title="Progress"
-    >
-      <n-tabs type="line" animated>
-        <n-tab-pane name="progress" tab="Progress">
-          <div class="progress-pane">
-            <!-- <stack-progress
-              :total="progress.total"
-              :success="progress.success"
-              :fail="progress.fail"
-            /> -->
-            <download-progress
-              :total="progress.total"
-              :success="progress.success"
-              :fail="progress.fail"
-            />
-          </div>
-        </n-tab-pane>
-        <n-tab-pane name="logp" tab="Log Progress">
-          <div id="logprogress"></div>
-        </n-tab-pane>
-        <n-tab-pane name="log" tab="Log">
-          <div class="log-pane">
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <div class="text-sm text-gray-400">Latest logs</div>
-              <div class="flex items-center gap-2">
-                <n-button size="tiny" secondary @click="clearLogs"
-                  >Clear</n-button
-                >
-                <n-button size="tiny" secondary @click="copyLogs"
-                  >Copy</n-button
-                >
+            Start
+          </n-button>
+        </div>
+      </div>
+      <n-modal
+        v-model:show="progressUi.visible"
+        preset="card"
+        class="w-[720px]"
+        title="Progress"
+      >
+        <n-tabs type="line" animated>
+          <n-tab-pane name="progress" tab="Progress">
+            <div class="progress-pane">
+              <div class="w-full">
+                <div class="grid grid-cols-4 gap-2 mb-3">
+                  <n-card size="small" content-style="padding: 0.5rem;">
+                    <div class="text-xs text-gray-400">Total</div>
+                    <div class="text-lg font-semibold">
+                      {{ progress.total }}
+                    </div>
+                  </n-card>
+                  <n-card size="small" content-style="padding: 0.5rem;">
+                    <div class="text-xs text-gray-400">Selected</div>
+                    <div class="text-lg font-semibold">
+                      {{ progress.selected }}
+                    </div>
+                  </n-card>
+                  <n-card size="small" content-style="padding: 0.5rem;">
+                    <div class="text-xs text-gray-400">Success</div>
+                    <div class="text-lg font-semibold">
+                      {{ progress.success }}
+                    </div>
+                  </n-card>
+                  <n-card size="small" content-style="padding: 0.5rem;">
+                    <div class="text-xs text-gray-400">Failed</div>
+                    <div class="text-lg font-semibold">{{ progress.fail }}</div>
+                  </n-card>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                  <n-card size="small" content-style="padding: 0.5rem;">
+                    <div class="text-xs text-gray-400">Skipped</div>
+                    <div class="text-lg font-semibold">
+                      {{ progress.skipped }}
+                    </div>
+                  </n-card>
+                  <n-card size="small" content-style="padding: 0.5rem;">
+                    <div class="text-xs text-gray-400">Selected Manga</div>
+                    <div class="text-sm font-medium truncate">
+                      {{ selectedManga?.main_title || '-' }}
+                    </div>
+                  </n-card>
+                </div>
+                <div class="mb-2">
+                  <div class="text-xs text-gray-400 mb-1">Overall</div>
+                  <n-progress
+                    type="line"
+                    :percentage="overallPercent"
+                    indicator-placement="inside"
+                    processing
+                    :border-radius="4"
+                  />
+                  <div class="flex justify-between text-xs text-gray-400 mt-1">
+                    <div>
+                      Processed: {{ progress.processed }} / {{ progress.total }}
+                    </div>
+                    <div>
+                      Current:
+                      {{
+                        progress.currentChapterNumber
+                          ? `Ch ${progress.currentChapterNumber}`
+                          : '-'
+                      }}
+                      {{
+                        progress.currentStep ? `(${progress.currentStep})` : ''
+                      }}
+                    </div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <div class="text-xs text-gray-400 mb-1">
+                      Success Rate (Selected)
+                    </div>
+                    <n-progress
+                      type="line"
+                      status="success"
+                      :percentage="successPercent"
+                      indicator-placement="inside"
+                      :border-radius="4"
+                    />
+                  </div>
+                  <div>
+                    <div class="text-xs text-gray-400 mb-1">
+                      Fail Rate (Selected)
+                    </div>
+                    <n-progress
+                      type="line"
+                      status="error"
+                      :percentage="failPercent"
+                      indicator-placement="inside"
+                      :border-radius="4"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-            <n-log :log="progressLogsText" :rows="12" />
-          </div>
-        </n-tab-pane>
-      </n-tabs>
-    </n-modal>
+          </n-tab-pane>
+          <n-tab-pane name="logp" tab="Log Progress">
+            <div class="log-pane">
+              <div id="logprogress" class="h-full"></div>
+            </div>
+          </n-tab-pane>
+          <n-tab-pane name="log" tab="Log">
+            <div class="log-pane">
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <div class="text-sm text-gray-400">Latest logs</div>
+                <div class="flex items-center gap-2">
+                  <n-button size="tiny" secondary @click="clearLogs"
+                    >Clear</n-button
+                  >
+                  <n-button size="tiny" secondary @click="copyLogs"
+                    >Copy</n-button
+                  >
+                </div>
+              </div>
+              <n-log :log="progressLogsText" :rows="12" />
+            </div>
+          </n-tab-pane>
+        </n-tabs>
+      </n-modal>
+    </n-spin>
   </div>
 </template>
 
@@ -149,9 +251,11 @@
 import { reactive, computed, ref, onMounted } from 'vue'
 import { DatabaseService } from 'bindings/mangav5/services'
 import { MangaBasic } from 'bindings/mangav5/internal/models'
-import { useMessage } from 'naive-ui'
+import { useDialog, useMessage } from 'naive-ui'
+import { useConvertAndCompress } from '@/composable/useConvertAndCompress'
 
 const message = useMessage()
+const dialog = useDialog()
 const config = reactive({
   quality: 60,
   resize: 1000,
@@ -165,23 +269,25 @@ const config = reactive({
 const selectedManga = ref<MangaBasic | null>(null)
 
 const progressUi = reactive({
-  visible: true,
+  visible: false,
 })
 
 const progress = reactive({
-  total: 100,
-  success: 51,
+  total: 0,
+  selected: 0,
+  success: 0,
   fail: 0,
+  skipped: 0,
+  processed: 0,
+  currentChapterNumber: null as number | null,
+  currentStep: '' as string,
 })
 
-const progressLogs = ref<string[]>([
-  'Starting convert...',
-  'Scanning chapters...',
-  'Processing: Chapter 1',
-  'Success: Chapter 1',
-  'Processing: Chapter 2',
-  'Failed: Chapter 2 (file missing)',
-])
+const ui = reactive({
+  running: false,
+})
+
+const progressLogs = ref<string[]>([])
 const progressLogsText = computed(() => progressLogs.value.join('\n'))
 const clearLogs = () => {
   progressLogs.value = []
@@ -192,6 +298,110 @@ const copyLogs = async () => {
     message.success('Log copied')
   } catch (_) {
     message.error('Failed to copy log')
+  }
+}
+
+const overallPercent = computed(() => {
+  if (progress.total <= 0) return 0
+  return Math.min(100, Math.round((progress.processed / progress.total) * 100))
+})
+
+const successPercent = computed(() => {
+  if (progress.selected <= 0) return 0
+  return Math.min(100, Math.round((progress.success / progress.selected) * 100))
+})
+
+const failPercent = computed(() => {
+  if (progress.selected <= 0) return 0
+  return Math.min(100, Math.round((progress.fail / progress.selected) * 100))
+})
+
+const resetProgress = () => {
+  progress.total = 0
+  progress.selected = 0
+  progress.success = 0
+  progress.fail = 0
+  progress.skipped = 0
+  progress.processed = 0
+  progress.currentChapterNumber = null
+  progress.currentStep = ''
+  clearLogs()
+}
+
+const openProgress = () => {
+  progressUi.visible = true
+}
+
+const startConvert = async () => {
+  if (!selectedManga.value) {
+    message.error('Pilih manga dulu')
+    return
+  }
+  if (ui.running) return
+
+  const ok = await new Promise<boolean>(resolve => {
+    dialog.warning({
+      title: 'Konfirmasi',
+      content: `Mulai convert/compress untuk "${selectedManga.value?.main_title}"?`,
+      positiveText: 'Start',
+      negativeText: 'Cancel',
+      onPositiveClick: () => resolve(true),
+      onNegativeClick: () => resolve(false),
+    })
+  })
+  if (!ok) return
+
+  ui.running = true
+  resetProgress()
+  progressUi.visible = true
+  progressLogs.value.push('Starting...')
+  try {
+    const result = await useConvertAndCompress(
+      {
+        manga_id: selectedManga.value.id,
+        manga_title: selectedManga.value.main_title,
+        quality: config.quality,
+        resize: config.resize,
+        delete: config.delete,
+        compress: config.compress,
+        status_read_only: config.status_read_only,
+        status_resize: config.status_resize,
+      },
+      {
+        onState: s => {
+          progress.total = s.total
+          progress.selected = s.selected
+          progress.success = s.success
+          progress.fail = s.failed
+          progress.skipped = s.skipped
+          progress.processed = s.processed
+          progress.currentChapterNumber = s.current_chapter_number
+          progress.currentStep = s.current_step ?? ''
+        },
+        onLog: log => {
+          progressLogs.value.push(
+            `Ch ${log.chapter_number}: ${log.step} - ${log.message}`,
+          )
+        },
+      },
+    )
+
+    progress.total = result.total
+    progress.selected = result.selected
+    progress.success = result.success
+    progress.fail = result.failed
+    progress.skipped = result.skipped
+    progress.processed = result.total
+
+    if (result.failed > 0) {
+      message.error(`Selesai dengan error: ${result.failed} failed`)
+    } else {
+      message.success('Selesai')
+    }
+  } catch (error) {
+    message.error(`Gagal: ${error}`)
+  } finally {
+    ui.running = false
   }
 }
 
