@@ -127,7 +127,7 @@
 import { DatabaseService, FileService } from '../../bindings/mangav5/services'
 import { Chapter, MangaDetail } from '../../bindings/mangav5/internal/models'
 import { ImagePath } from '@/utils/filePathHelper'
-import { Window as WailsWindow } from '@wailsio/runtime'
+import { Events, Window as WailsWindow } from '@wailsio/runtime'
 import { onBeforeRouteLeave } from 'vue-router'
 import { UseContextMenu } from '@/utils/contextMenuHelper'
 
@@ -257,6 +257,19 @@ interface ImageItem {
   fileName: string
   index: number
 }
+
+interface DeleteProgress {
+  stage: string
+  message: string
+  relativePath: string
+  filename?: string
+  target?: string
+  index: number
+  total: number
+}
+
+let deleteMessageReactive: any = null
+let lastDeleteStage: string | null = null
 
 const displayRows = computed(() => {
   if (readingMode.value === 'long-strip') {
@@ -411,6 +424,39 @@ const goToHome = () => {
   })
 }
 
+const deleteImage = async (filename: string) => {
+  if (!chapter.value?.path) {
+    message.error('Chapter path tidak ditemukan')
+    return
+  }
+  lastDeleteStage = null
+  if (!deleteMessageReactive) {
+    deleteMessageReactive = message.loading('Memulai delete...', {
+      duration: 0,
+    })
+  }
+  try {
+    await FileService.DeleteImages(chapter.value.path, [filename])
+    imageList.value = await FileService.GetImageList(chapter.value.path)
+    delete imageDimensions[filename]
+    preloadImages()
+    if (lastDeleteStage !== 'done') {
+      message.success(`Delete selesai: ${filename}`)
+    }
+  } catch (error) {
+    if (lastDeleteStage !== 'error') {
+      message.error(`Gagal delete ${filename}: ${error}`)
+    }
+  } finally {
+    if (deleteMessageReactive) {
+      try {
+        deleteMessageReactive.destroy()
+      } catch (_) {}
+      deleteMessageReactive = null
+    }
+  }
+}
+
 const deleteMenu = (filename: string) => {
   dialog.error({
     title: 'Confirm Delete File',
@@ -421,8 +467,8 @@ const deleteMenu = (filename: string) => {
     negativeButtonProps: {
       color: 'grey',
     },
-    onPositiveClick: () => {
-      message.success('Sure')
+    onPositiveClick: async () => {
+      await deleteImage(filename)
     },
     onNegativeClick: () => {
       message.error('Not Sure')
@@ -524,6 +570,36 @@ watch(
   },
 )
 onMounted(async () => {
+  Events.On('deleteProgress', event => {
+    const data = event.data as DeleteProgress
+    if (!data) return
+    lastDeleteStage = data.stage
+    if (!deleteMessageReactive) {
+      deleteMessageReactive = message.loading(data.message || 'Memproses...', {
+        duration: 0,
+      })
+    } else if (data.message) {
+      deleteMessageReactive.content = data.message
+    }
+
+    if (data.stage === 'done') {
+      try {
+        deleteMessageReactive?.destroy()
+      } catch (_) {}
+      deleteMessageReactive = null
+      if (data.message) {
+        message.success(data.message)
+      }
+    } else if (data.stage === 'error') {
+      try {
+        deleteMessageReactive?.destroy()
+      } catch (_) {}
+      deleteMessageReactive = null
+      if (data.message) {
+        message.error(data.message)
+      }
+    }
+  })
   // load first time reader
   try {
     const isMax: boolean = await WailsWindow.IsMaximised()

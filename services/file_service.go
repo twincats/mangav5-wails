@@ -21,11 +21,37 @@ type FileService struct {
 	dbService *DatabaseService
 }
 
+type DeleteProgress struct {
+	Stage        string `json:"stage"`
+	Message      string `json:"message"`
+	RelativePath string `json:"relativePath"`
+	Filename     string `json:"filename,omitempty"`
+	Target       string `json:"target,omitempty"`
+	Index        int    `json:"index"`
+	Total        int    `json:"total"`
+}
+
 var MANGA_DIR = ""
 
 // NewFileService creates a new FileService
 func NewFileService(dbService *DatabaseService) *FileService {
 	return &FileService{dbService: dbService}
+}
+
+func emitDeleteProgress(stage string, msg string, relativePath string, filename string, target string, index int, total int) {
+	app := application.Get()
+	if app == nil {
+		return
+	}
+	app.Event.Emit("deleteProgress", DeleteProgress{
+		Stage:        stage,
+		Message:      msg,
+		RelativePath: relativePath,
+		Filename:     filename,
+		Target:       target,
+		Index:        index,
+		Total:        total,
+	})
 }
 
 func (s *FileService) GetMangaDir() (string, error) {
@@ -203,38 +229,61 @@ func (s *FileService) DeleteImages(relativePath string, filenames []string) erro
 	}
 
 	fullPath := filepath.Join(mangaDir, relativePath)
+	emitDeleteProgress("start", "Memulai delete file...", relativePath, "", "", 0, len(filenames))
 
 	// 1. Check if it's a directory
 	info, err := os.Stat(fullPath)
 	if err == nil && info.IsDir() {
 		// Target is a directory
-		for _, fname := range filenames {
+		for i, fname := range filenames {
 			// Basic security check: ensure filename doesn't have path separators
 			if strings.Contains(fname, string(os.PathSeparator)) || strings.Contains(fname, "/") {
 				continue
 			}
+			emitDeleteProgress("delete", "Menghapus: "+fname, relativePath, fname, "directory", i+1, len(filenames))
 			fPath := filepath.Join(fullPath, fname)
 			if err := os.Remove(fPath); err != nil {
+				emitDeleteProgress("error", "Gagal menghapus: "+fname, relativePath, fname, "directory", i+1, len(filenames))
 				// We might want to continue deleting other files even if one fails,
 				// or return the error. For now, returning error is safer.
 				return err
 			}
 		}
+		emitDeleteProgress("done", "Delete selesai.", relativePath, "", "directory", len(filenames), len(filenames))
 		return nil
 	}
 
 	// 2. Check if .cbz exists
 	cbzPath := fullPath + ".cbz"
 	if _, err := os.Stat(cbzPath); err == nil {
-		return zipper.DeleteFileFromArchive(cbzPath, filenames)
+		emitDeleteProgress("rebuild", "Membangun ulang archive (cbz)...", relativePath, "", "cbz", 0, len(filenames))
+		for i, fname := range filenames {
+			emitDeleteProgress("mark", "Menandai untuk dihapus: "+fname, relativePath, fname, "cbz", i+1, len(filenames))
+		}
+		if err := zipper.DeleteFileFromArchive(cbzPath, filenames); err != nil {
+			emitDeleteProgress("error", "Gagal membangun ulang archive (cbz).", relativePath, "", "cbz", 0, len(filenames))
+			return err
+		}
+		emitDeleteProgress("done", "Delete selesai (cbz).", relativePath, "", "cbz", len(filenames), len(filenames))
+		return nil
 	}
 
 	// 3. Check if .zip exists
 	zipPath := fullPath + ".zip"
 	if _, err := os.Stat(zipPath); err == nil {
-		return zipper.DeleteFileFromArchive(zipPath, filenames)
+		emitDeleteProgress("rebuild", "Membangun ulang archive (zip)...", relativePath, "", "zip", 0, len(filenames))
+		for i, fname := range filenames {
+			emitDeleteProgress("mark", "Menandai untuk dihapus: "+fname, relativePath, fname, "zip", i+1, len(filenames))
+		}
+		if err := zipper.DeleteFileFromArchive(zipPath, filenames); err != nil {
+			emitDeleteProgress("error", "Gagal membangun ulang archive (zip).", relativePath, "", "zip", 0, len(filenames))
+			return err
+		}
+		emitDeleteProgress("done", "Delete selesai (zip).", relativePath, "", "zip", len(filenames), len(filenames))
+		return nil
 	}
 
+	emitDeleteProgress("error", "Target tidak ditemukan.", relativePath, "", "", 0, len(filenames))
 	return errors.New("target path not found (directory, .cbz, or .zip): " + relativePath)
 }
 
