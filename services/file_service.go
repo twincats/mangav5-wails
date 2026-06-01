@@ -218,6 +218,49 @@ func (s *FileService) ConvertToCbz(dirPath string) error {
 	return os.RemoveAll(dirPath)
 }
 
+func (s *FileService) GetDirectorySize(relativePath string) (int64, error) {
+	mangaDir, err := s.GetMangaDir()
+	if err != nil {
+		return 0, err
+	}
+
+	base := filepath.Clean(mangaDir)
+	fullPath := filepath.Clean(filepath.Join(base, filepath.Clean(relativePath)))
+	baseWithSep := base + string(os.PathSeparator)
+	if !(fullPath == base || strings.HasPrefix(fullPath, baseWithSep)) {
+		return 0, errors.New("invalid path")
+	}
+
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		return 0, err
+	}
+
+	if !info.IsDir() {
+		return info.Size(), nil
+	}
+
+	var total int64 = 0
+	err = filepath.WalkDir(fullPath, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		fi, err := d.Info()
+		if err != nil {
+			return err
+		}
+		total += fi.Size()
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
 // DeleteImages deletes specific image files from a directory or a cbz/zip archive.
 // It prioritizes: Directory > .cbz > .zip
 // relativePath: path relative to the manga directory (e.g. "MangaTitle/Chapter1")

@@ -100,21 +100,32 @@
             </n-list-item>
           </n-list>
         </n-scrollbar>
-        <div class="flex gap-2 justify-end">
-          <n-button tertiary :disabled="ui.running" @click="resetProgress">
-            Reset
-          </n-button>
-          <n-button secondary :disabled="ui.running" @click="openProgress">
-            Progress
-          </n-button>
-          <n-button
-            type="primary"
-            :disabled="!selectedManga || ui.running"
-            :loading="ui.running"
-            @click="startConvert"
-          >
-            Start
-          </n-button>
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-xs text-gray-400 truncate">
+            Size:
+            {{ sizeBeforeText }}
+            <span v-if="sizeAfterText !== '-'">→ {{ sizeAfterText }}</span>
+            <span v-if="sizeDiffText || sizePercentText">
+              ({{ sizeDiffText }}{{ sizeDiffText && sizePercentText ? ', ' : ''
+              }}{{ sizePercentText }})
+            </span>
+          </div>
+          <div class="flex gap-2 justify-end">
+            <n-button tertiary :disabled="ui.running" @click="resetAll">
+              Reset
+            </n-button>
+            <n-button secondary :disabled="ui.running" @click="openProgress">
+              Progress
+            </n-button>
+            <n-button
+              type="primary"
+              :disabled="!selectedManga || ui.running"
+              :loading="ui.running"
+              @click="startConvert"
+            >
+              Start
+            </n-button>
+          </div>
         </div>
       </div>
       <n-modal
@@ -248,22 +259,26 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref, onMounted } from 'vue'
-import { DatabaseService } from 'bindings/mangav5/services'
+import { reactive, computed, ref, onMounted, watch } from 'vue'
+import { DatabaseService, FileService } from 'bindings/mangav5/services'
 import { MangaBasic } from 'bindings/mangav5/internal/models'
 import { useDialog, useMessage } from 'naive-ui'
 import { useConvertAndCompress } from '@/composable/useConvertAndCompress'
+import { safeWindowsDirectoryName } from '@/utils/filePathHelper'
 
 const message = useMessage()
 const dialog = useDialog()
-const config = reactive({
+const defaultConfig = {
   quality: 60,
   resize: 1000,
   delete: true,
   compress: true,
-  status_read_only: true,
+  status_read_only: false,
   status_resize: true,
   search: '',
+}
+const config = reactive({
+  ...defaultConfig,
 })
 
 const selectedManga = ref<MangaBasic | null>(null)
@@ -328,8 +343,112 @@ const resetProgress = () => {
   clearLogs()
 }
 
+const resetAll = () => {
+  resetProgress()
+  config.quality = defaultConfig.quality
+  config.resize = defaultConfig.resize
+  config.delete = defaultConfig.delete
+  config.compress = defaultConfig.compress
+  config.status_read_only = defaultConfig.status_read_only
+  config.status_resize = defaultConfig.status_resize
+  config.search = defaultConfig.search
+}
+
 const openProgress = () => {
   progressUi.visible = true
+}
+
+const sizeUi = reactive({
+  beforeBytes: null as number | null,
+  afterBytes: null as number | null,
+  beforeLoading: false,
+  afterLoading: false,
+})
+
+const selectedMangaDir = computed(() => {
+  const t = selectedManga.value?.main_title?.trim() || ''
+  if (!t) return ''
+  return safeWindowsDirectoryName(t)
+})
+
+const formatBytes = (bytes: number) => {
+  if (!Number.isFinite(bytes)) return '-'
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.min(
+    units.length - 1,
+    Math.floor(Math.log(bytes) / Math.log(k)),
+  )
+  const v = bytes / Math.pow(k, i)
+  const decimals = i === 0 ? 0 : v >= 100 ? 0 : v >= 10 ? 1 : 2
+  return `${v.toFixed(decimals)} ${units[i]}`
+}
+
+const sizeBeforeText = computed(() => {
+  if (sizeUi.beforeLoading && sizeUi.beforeBytes == null) return '...'
+  if (sizeUi.beforeBytes == null) return '-'
+  return formatBytes(sizeUi.beforeBytes)
+})
+
+const sizeAfterText = computed(() => {
+  if (sizeUi.afterLoading && sizeUi.afterBytes == null) return '...'
+  if (sizeUi.afterBytes == null) return '-'
+  return formatBytes(sizeUi.afterBytes)
+})
+
+const sizeDiffText = computed(() => {
+  if (sizeUi.beforeBytes == null || sizeUi.afterBytes == null) return ''
+  const diff = sizeUi.afterBytes - sizeUi.beforeBytes
+  const abs = Math.abs(diff)
+  const sign = diff > 0 ? '+' : diff < 0 ? '-' : ''
+  return `${sign}${formatBytes(abs)}`
+})
+
+const sizePercentText = computed(() => {
+  if (sizeUi.beforeBytes == null || sizeUi.afterBytes == null) return ''
+  const before = sizeUi.beforeBytes
+  if (before <= 0) return ''
+  const diff = sizeUi.afterBytes - before
+  if (diff === 0) return '0%'
+  const pct = (Math.abs(diff) / before) * 100
+  const pctText =
+    pct >= 100
+      ? Math.round(pct).toString()
+      : pct >= 10
+        ? pct.toFixed(1)
+        : pct.toFixed(2)
+  return diff < 0 ? `decrease ${pctText}%` : `increase ${pctText}%`
+})
+
+const refreshSizeBefore = async (relDir: string) => {
+  if (!relDir) {
+    sizeUi.beforeBytes = null
+    return
+  }
+  sizeUi.beforeLoading = true
+  try {
+    sizeUi.beforeBytes = await FileService.GetDirectorySize(relDir)
+  } catch (_) {
+    sizeUi.beforeBytes = null
+  } finally {
+    sizeUi.beforeLoading = false
+  }
+}
+
+const refreshSizeAfter = async (relDir: string) => {
+  if (!relDir) {
+    sizeUi.afterBytes = null
+    return
+  }
+  sizeUi.afterLoading = true
+  try {
+    sizeUi.afterBytes = await FileService.GetDirectorySize(relDir)
+  } catch (_) {
+    sizeUi.afterBytes = null
+  } finally {
+    sizeUi.afterLoading = false
+  }
 }
 
 const startConvert = async () => {
@@ -350,6 +469,11 @@ const startConvert = async () => {
     })
   })
   if (!ok) return
+
+  const relDir = selectedMangaDir.value
+  const selectedId = selectedManga.value.id
+  sizeUi.afterBytes = null
+  await refreshSizeBefore(relDir)
 
   ui.running = true
   resetProgress()
@@ -402,6 +526,9 @@ const startConvert = async () => {
     message.error(`Gagal: ${error}`)
   } finally {
     ui.running = false
+    if (selectedManga.value?.id === selectedId) {
+      await refreshSizeAfter(relDir)
+    }
   }
 }
 
@@ -419,6 +546,17 @@ const mangaListFilter = computed(() => {
     item.main_title.toLowerCase().includes(config.search.toLowerCase()),
   )
 })
+
+watch(
+  () => selectedManga.value?.id,
+  () => {
+    sizeUi.beforeBytes = null
+    sizeUi.afterBytes = null
+    const relDir = selectedMangaDir.value
+    if (!relDir) return
+    refreshSizeBefore(relDir)
+  },
+)
 
 onMounted(() => {
   getMangaList()

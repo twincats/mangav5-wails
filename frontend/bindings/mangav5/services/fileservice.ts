@@ -27,6 +27,10 @@ export function DeleteImages(relativePath: string, filenames: string[]): $Cancel
     return $Call.ByID(3820987783, relativePath, filenames);
 }
 
+export function GetDirectorySize(relativePath: string): $CancellablePromise<number> {
+    return $Call.ByID(429338552, relativePath);
+}
+
 /**
  * GetImageList returns a list of image files in a directory or cbz/zip archive.
  * It prioritizes: Directory > .cbz > .zip
