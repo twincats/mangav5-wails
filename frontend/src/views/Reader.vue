@@ -215,10 +215,46 @@ const ensureDimensionsForIndexes = (indexes: number[]) => {
   })
 }
 
-const getChapterImageList = async (chapter_path: string) => {
+const resetReaderScrollTop = () => {
+  const baseEl = scrollAreaRef.value
+  if (!baseEl) return
+  let el: HTMLElement | null = baseEl
+  if (el.scrollHeight <= el.clientHeight) {
+    let p = el.parentElement
+    while (p) {
+      const style = getComputedStyle(p)
+      const overflowY = style.overflowY
+      if (
+        (overflowY === 'auto' || overflowY === 'scroll') &&
+        p.scrollHeight > p.clientHeight
+      ) {
+        el = p
+        break
+      }
+      p = p.parentElement
+    }
+  }
+  el.scrollTop = 0
+  el.scrollLeft = 0
+}
+
+const getChapterImageList = async (
+  chapter_path: string,
+  opts: { resetScrollTop?: boolean } = {},
+) => {
   try {
+    if (opts.resetScrollTop) {
+      resetReaderScrollTop()
+    }
     imageList.value = await FileService.GetImageList(chapter_path)
     preloadImages()
+    if (opts.resetScrollTop) {
+      await nextTick()
+      resetReaderScrollTop()
+      requestAnimationFrame(() => resetReaderScrollTop())
+      setTimeout(() => resetReaderScrollTop(), 0)
+      setTimeout(() => resetReaderScrollTop(), 50)
+    }
   } catch (error) {
     message.error(`Error fetching chapter image list : ${error}`)
   }
@@ -529,6 +565,7 @@ const navigateChapter = (direction: 'prev' | 'next') => {
   if (mangaDetail.value) {
     if (targetIndex >= 0 && targetIndex < mangaDetail.value?.chapters.length) {
       const targetChapter = mangaDetail.value?.chapters[targetIndex]
+      closeContextMenu()
       teleportEnabled.value = false
       const exit = document.fullscreenElement
         ? document.exitFullscreen().catch(() => {})
@@ -543,15 +580,18 @@ const navigateChapter = (direction: 'prev' | 'next') => {
 // Update chapter when route prop changes
 watch(
   () => chapterId,
-  newId => {
+  async newId => {
     if (!mangaDetail.value) return
     hasMarkedRead.value = false
+    nextTick(() => {
+      teleportEnabled.value = true
+    })
     const idx = mangaDetail.value.chapters.findIndex(chap => chap.id === newId)
     if (idx >= 0) {
       currentChapterIndex.value = idx
       const ch = mangaDetail.value.chapters[idx]
       chapter.value = ch
-      getChapterImageList(ch.path)
+      await getChapterImageList(ch.path, { resetScrollTop: true })
     }
   },
 )
@@ -708,6 +748,7 @@ onMounted(async () => {
   align-items: center;
   padding: 0;
   gap: 4px; /* Small gap between rows */
+  overflow-anchor: none;
 }
 
 /* Row Styles */
