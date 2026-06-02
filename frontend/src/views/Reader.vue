@@ -41,6 +41,7 @@
           :key="imgIndex"
           class="image-wrapper"
           :class="{ 'double-page-item': readingMode === 'double-page' }"
+          :style="getImageWrapperStyle(img)"
           @contextmenu.prevent.stop="handleContextMenu($event, img)"
         >
           <n-image
@@ -52,11 +53,12 @@
             :img-props="{
               decoding: 'async',
               fetchpriority: priorityIndexes.has(img.index) ? 'high' : 'auto',
+              style: 'width: 100%; height: 100%; display: block;',
             }"
           >
             <template #placeholder>
               <div
-                class="flex items-center justify-center h-[50vh] w-full bg-gray-800/30 rounded"
+                class="flex items-center justify-center h-full w-full bg-gray-800/30 rounded"
               >
                 <n-spin size="large" />
               </div>
@@ -177,18 +179,28 @@ const imageDimensions = reactive<
   Record<string, { width: number; height: number }>
 >({})
 
+let imageDimensionsChapterPath: string | null = null
+const clearImageDimensions = () => {
+  Object.keys(imageDimensions).forEach(k => {
+    delete imageDimensions[k]
+  })
+}
+const getImageDimensionKey = (chapterPath: string, fileName: string) =>
+  `${chapterPath}|${fileName}`
+
 const preloadImages = () => {
   if (!chapter.value) return
   const basePath = chapter.value.path
   const limit = 8
   imageList.value.slice(0, limit).forEach(img => {
     // Only load if not already known
-    if (imageDimensions[img]) return
+    const key = getImageDimensionKey(basePath, img)
+    if (imageDimensions[key]) return
 
     const src = ImagePath(basePath + '/' + img)
     const image = new Image()
     image.onload = () => {
-      imageDimensions[img] = {
+      imageDimensions[key] = {
         width: image.naturalWidth,
         height: image.naturalHeight,
       }
@@ -197,16 +209,67 @@ const preloadImages = () => {
   })
 }
 
+let imageDimensionWarmupRunId = 0
+const warmupAllImageDimensions = (chapterPath: string, list: string[]) => {
+  imageDimensionWarmupRunId++
+  const runId = imageDimensionWarmupRunId
+  const concurrency = 6
+  let cursor = 0
+
+  const worker = async () => {
+    while (true) {
+      if (runId !== imageDimensionWarmupRunId) return
+      const idx = cursor++
+      if (idx >= list.length) return
+      const fname = list[idx]
+      if (!fname) continue
+      const key = getImageDimensionKey(chapterPath, fname)
+      if (imageDimensions[key]) continue
+      await new Promise<void>(resolve => {
+        const image = new Image()
+        const done = () => resolve()
+        image.onload = () => {
+          if (runId === imageDimensionWarmupRunId) {
+            imageDimensions[key] = {
+              width: image.naturalWidth,
+              height: image.naturalHeight,
+            }
+          }
+          done()
+        }
+        image.onerror = done
+        image.src = ImagePath(chapterPath + '/' + fname)
+      })
+    }
+  }
+
+  Promise.all(Array.from({ length: concurrency }, () => worker())).catch(
+    () => {},
+  )
+}
+
+const getImageWrapperStyle = (img: ImageItem) => {
+  const chapterPath = chapter.value?.path
+  if (!chapterPath) return { aspectRatio: '2 / 3' }
+  const dim = imageDimensions[getImageDimensionKey(chapterPath, img.fileName)]
+  if (dim?.width && dim?.height) {
+    return { aspectRatio: `${dim.width} / ${dim.height}` }
+  }
+  return { aspectRatio: '2 / 3' }
+}
+
 const ensureDimensionsForIndexes = (indexes: number[]) => {
   if (!chapter.value) return
   const basePath = chapter.value.path
   indexes.forEach(i => {
     const fname = imageList.value[i]
-    if (!fname || imageDimensions[fname]) return
+    if (!fname) return
+    const key = getImageDimensionKey(basePath, fname)
+    if (imageDimensions[key]) return
     const src = ImagePath(basePath + '/' + fname)
     const image = new Image()
     image.onload = () => {
-      imageDimensions[fname] = {
+      imageDimensions[key] = {
         width: image.naturalWidth,
         height: image.naturalHeight,
       }
@@ -243,11 +306,17 @@ const getChapterImageList = async (
   opts: { resetScrollTop?: boolean } = {},
 ) => {
   try {
+    if (imageDimensionsChapterPath !== chapter_path) {
+      imageDimensionsChapterPath = chapter_path
+      imageDimensionWarmupRunId++
+      clearImageDimensions()
+    }
     if (opts.resetScrollTop) {
       resetReaderScrollTop()
     }
     imageList.value = await FileService.GetImageList(chapter_path)
     preloadImages()
+    warmupAllImageDimensions(chapter_path, imageList.value)
     if (opts.resetScrollTop) {
       await nextTick()
       resetReaderScrollTop()
@@ -308,6 +377,7 @@ let deleteMessageReactive: any = null
 let lastDeleteStage: string | null = null
 
 const displayRows = computed(() => {
+  const chapterPath = chapter.value?.path
   if (readingMode.value === 'long-strip') {
     // 1 image per row
     return imageList.value.map((img, index) => [{ fileName: img, index }])
@@ -317,7 +387,10 @@ const displayRows = computed(() => {
     let i = 0
     while (i < imageList.value.length) {
       const img = imageList.value[i]
-      const dim = imageDimensions[img]
+      const dim =
+        chapterPath && img
+          ? imageDimensions[getImageDimensionKey(chapterPath, img)]
+          : undefined
       const isWide = dim ? dim.width > dim.height : false // Default to portrait if not loaded
 
       if (isWide) {
@@ -327,7 +400,10 @@ const displayRows = computed(() => {
         // Current is portrait
         if (i + 1 < imageList.value.length) {
           const nextImg = imageList.value[i + 1]
-          const nextDim = imageDimensions[nextImg]
+          const nextDim =
+            chapterPath && nextImg
+              ? imageDimensions[getImageDimensionKey(chapterPath, nextImg)]
+              : undefined
           const nextIsWide = nextDim ? nextDim.width > nextDim.height : false
 
           if (!nextIsWide) {
@@ -474,7 +550,7 @@ const deleteImage = async (filename: string) => {
   try {
     await FileService.DeleteImages(chapter.value.path, [filename])
     imageList.value = await FileService.GetImageList(chapter.value.path)
-    delete imageDimensions[filename]
+    delete imageDimensions[getImageDimensionKey(chapter.value.path, filename)]
     preloadImages()
     if (lastDeleteStage !== 'done') {
       message.success(`Delete selesai: ${filename}`)
