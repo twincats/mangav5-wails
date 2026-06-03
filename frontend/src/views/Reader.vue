@@ -32,7 +32,7 @@
           'is-double': readingMode === 'double-page',
           'is-rtl': direction === 'rtl',
         }"
-        :style="readerRowStyle"
+        :style="getReaderRowStyle(row)"
         :ref="el => (rowRefs[rowIndex] = el as HTMLElement)"
         :data-indexes="row.map(r => r.index).join(',')"
       >
@@ -511,12 +511,20 @@ const toggleFullscreen = async () => {
 }
 
 const fullWidth = ref(false)
-const readerRowStyle = computed(() => {
-  if (readingMode.value === 'long-strip') {
-    return { maxWidth: fullWidth.value ? '100%' : '1000px' }
-  }
-  return {}
-})
+const isLandscapeImage = (fileName: string) => {
+  const chapterPath = chapter.value?.path
+  if (!chapterPath) return false
+  const dim = imageDimensions[getImageDimensionKey(chapterPath, fileName)]
+  if (!dim?.width || !dim?.height) return false
+  return dim.width > dim.height
+}
+const getReaderRowStyle = (row: ImageItem[]) => {
+  if (readingMode.value !== 'long-strip') return {}
+  const fileName = row?.[0]?.fileName
+  if (fullWidth.value) return { maxWidth: '100%' }
+  if (fileName && isLandscapeImage(fileName)) return { maxWidth: '100%' }
+  return { maxWidth: '1000px' }
+}
 const toggleFullWidth = () => {
   if (readingMode.value !== 'long-strip') {
     return

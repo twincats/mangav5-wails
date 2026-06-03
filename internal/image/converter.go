@@ -562,7 +562,22 @@ func ConvertFilesToWebP(ctx context.Context, items []WebPBatchItem, opts WebPOpt
 			}
 
 			c := FileToWebP(j.item.InputPath, opts)
-			c.ResizeAspect(batch.ResizeWidth, batch.ResizeHeight, batch.AllowUpscale)
+			targetW := batch.ResizeWidth
+			targetH := batch.ResizeHeight
+			if targetW > 0 && targetH == 0 && c.img != nil {
+				w := c.img.Width()
+				h := c.img.Height()
+				if w > 0 && h > 0 && w > h {
+					const landscapeMinWidth = 1980
+					if w <= landscapeMinWidth {
+						targetW = 0
+						targetH = 0
+					} else {
+						targetW = landscapeMinWidth
+					}
+				}
+			}
+			c.ResizeAspect(targetW, targetH, batch.AllowUpscale)
 			n, err := func() (int64, error) {
 				f, err := os.Create(j.item.OutputPath)
 				if err != nil {
