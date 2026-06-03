@@ -1,26 +1,26 @@
 <template>
-  <div class="p-4">
+  <div class="">
     <n-spin :show="!mangaDetail">
       <div v-if="mangaDetail">
-        <n-card>
-          <n-grid x-gap="24" cols="1 600:6">
-            <n-gi span="1">
-              <div class="aspect-[2/3] w-full relative">
+        <n-card class="mb-2">
+          <div class="flex flex-col gap-5 md:flex-row">
+            <div class="w-30 2xl:w-49 shrink-0">
+              <div class="aspect-[2/3] w-full overflow-hidden rounded-md">
                 <n-image
                   :src="`${ImagePath(mangaDetail.main_title)}/cover`"
                   object-fit="cover"
-                  class="rounded-md w-full h-full"
+                  class="w-full h-full"
                   :img-props="{
                     style: 'width: 100%; height: 100%; object-fit: cover;',
                   }"
                   fallback-src="/placeholder.png"
                 />
               </div>
-            </n-gi>
-            <n-gi span="5">
+            </div>
+            <div class="min-w-0 flex-1">
               <n-space vertical size="large">
                 <div>
-                  <n-h1 class="mb-2">{{ mangaDetail.main_title }}</n-h1>
+                  <n-h2 class="mb-2">{{ mangaDetail.main_title }}</n-h2>
                   <n-space align="center">
                     <n-tag :type="getStatusType(mangaDetail.manga_status)">
                       {{ mangaDetail.manga_status }}
@@ -45,18 +45,19 @@
                       </n-tag>
                     </n-space>
                   </n-descriptions-item>
-                  <n-descriptions-item label="Description">
+                  <n-descriptions-item
+                    label="Description"
+                    :label-style="{ minWidth: '110px' }"
+                  >
                     <div class="whitespace-pre-wrap">
                       {{ mangaDetail.description }}
                     </div>
                   </n-descriptions-item>
                 </n-descriptions>
               </n-space>
-            </n-gi>
-          </n-grid>
+            </div>
+          </div>
         </n-card>
-
-        <n-divider />
 
         <n-card title="Chapters" size="small">
           <template #header-extra>
@@ -68,8 +69,9 @@
           <n-data-table
             :columns="columns"
             :data="mangaDetail.chapters || []"
-            :pagination="{ pageSize: 20 }"
+            :pagination="pagination"
             :row-key="row => row.id"
+            size="small"
             striped
           />
         </n-card>
@@ -82,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, onMounted, ref } from 'vue'
+import { h, onMounted, ref, computed, watch, reactive } from 'vue'
 import { MangaDetail, Chapter } from 'bindings/mangav5/internal/models'
 import { DatabaseService } from 'bindings/mangav5/services'
 import { ImagePath } from '@/utils/filePathHelper'
@@ -98,11 +100,31 @@ import {
   VisibilityOffFilled,
   WarningFilled,
 } from '@vicons/material'
+import { useBreakpoints, breakpointsTailwind } from '@vueuse/core'
 
 const message = useMessage()
 const router = useRouter()
 const { mangaId } = defineProps<{ mangaId: number }>()
 const mangaDetail = ref<MangaDetail | null>(null)
+const bp = useBreakpoints(breakpointsTailwind)
+const xxl = bp.greaterOrEqual('2xl')
+
+const pageSize = computed(() => (xxl.value ? 9 : 4))
+const pagination = reactive({
+  page: 1,
+  pageSize: pageSize.value,
+  onUpdatePage: (page: number) => {
+    pagination.page = page
+  },
+  onUpdatePageSize: (size: number) => {
+    pagination.pageSize = size
+    pagination.page = 1
+  },
+})
+watch(pageSize, next => {
+  pagination.pageSize = next
+  pagination.page = 1
+})
 
 const getManga = async () => {
   try {
