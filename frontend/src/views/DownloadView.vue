@@ -404,6 +404,10 @@ const fetchScrapeManga = async () => {
     if (listScrapeRuleDb.value.length === 0) {
       await loadListScrapeRuleDb()
     }
+    if (listScrapeRule.value.length === 0) {
+      message.error('Please add site rules in settings')
+      return
+    }
     const siteKey = inferSiteKeyFromUrl(downloadUrl.value)
     if (siteKey) {
       selectedSiteKey.value = siteKey

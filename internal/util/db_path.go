@@ -21,20 +21,24 @@ func GetAndMigrateDatabasePath() (string, error) {
 		return "", fmt.Errorf("failed to create application directory: %w", err)
 	}
 
-	dbPath := filepath.Join(appDir, "mangav5.db")
+	dbFileName := "mangav5.dev.db"
+	if IsProductionBuild() {
+		dbFileName = "mangav5.db"
+	}
+	dbPath := filepath.Join(appDir, dbFileName)
 	log.Println("Database path:", dbPath)
 
-	// Migration: If manga.db exists in current directory but not in AppData, copy it.
-	localDB := "manga.db"
-	if _, err := os.Stat(localDB); err == nil {
-		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-			log.Println("Found local database, migrating to AppData...")
-			if err := copyFile(localDB, dbPath); err != nil {
-				log.Println("Failed to write to new database location:", err)
-			} else {
-				log.Println("Database migrated successfully.")
-				// Optional: Rename old db to .bak to avoid confusion
-				os.Rename(localDB, localDB+".bak")
+	if IsProductionBuild() {
+		localDB := "manga.db"
+		if _, err := os.Stat(localDB); err == nil {
+			if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+				log.Println("Found local database, migrating to AppData...")
+				if err := copyFile(localDB, dbPath); err != nil {
+					log.Println("Failed to write to new database location:", err)
+				} else {
+					log.Println("Database migrated successfully.")
+					os.Rename(localDB, localDB+".bak")
+				}
 			}
 		}
 	}

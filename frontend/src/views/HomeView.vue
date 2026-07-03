@@ -7,7 +7,10 @@
         v-model:dateModel="dateModel"
         v-if="breakpoints.greaterOrEqual('2xl').value"
       />
-      <div class="grid grid-cols-6 xl:grid-cols-10 gap-2">
+      <div
+        v-if="mangaView.length > 0"
+        class="grid grid-cols-6 xl:grid-cols-10 gap-2"
+      >
         <div
           v-for="(m, index) in mangaView"
           class="relative group select-none rounded-1 transition-all duration-300"
@@ -49,6 +52,9 @@
             </div>
           </div>
         </div>
+      </div>
+      <div v-else class="h-[50vh] flex items-center justify-center">
+        <n-empty description="Tidak ada manga data" />
       </div>
       <div
         v-if="totalPages > 1"

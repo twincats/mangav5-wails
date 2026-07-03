@@ -111,17 +111,19 @@
           </div>
         </div>
       </div>
-      <div class="flex justify-end gap-2">
-        <n-button tertiary type="primary" @click="dialogSetConfig">
-          <n-icon>
-            <PlaylistAddFilled />
-          </n-icon>
-        </n-button>
-        <n-button secondary type="primary" @click="clearInput">
-          <n-icon>
-            <ClearFilled />
-          </n-icon>
-        </n-button>
+      <div class="flex flex-col items-end gap-2">
+        <div class="flex justify-end gap-2">
+          <n-button tertiary type="primary" @click="dialogSetConfig">
+            <n-icon>
+              <PlaylistAddFilled />
+            </n-icon>
+          </n-button>
+          <n-button secondary type="primary" @click="clearInput">
+            <n-icon>
+              <ClearFilled />
+            </n-icon>
+          </n-button>
+        </div>
       </div>
     </div>
     <!-- third row -->
@@ -449,6 +451,8 @@ const saveScrapingRules = async () => {
 }
 
 const mangaDirectory = ref('')
+const normalizeDirectory = (value: string) =>
+  value.trim().replace(/[\\/]+$/, '')
 const getMangaDirectory = async () => {
   try {
     const config = await DatabaseService.GetConfig('manga_directory')
@@ -458,26 +462,81 @@ const getMangaDirectory = async () => {
   }
 }
 getMangaDirectory()
+
+const saveMangaDirectory = async (directory: string) => {
+  await setMangaDirectory(directory)
+  mangaDirectory.value = directory
+  message.success('Manga Directory saved successfully')
+}
+
+const confirmMangaDirectoryChange = async (
+  previousDirectory: string,
+  nextDirectory: string,
+) => {
+  return await new Promise<boolean>(resolve => {
+    dialog.warning({
+      title: 'Konfirmasi Ganti Folder Download',
+      content: `Folder download manga akan diganti dari "${previousDirectory}" ke "${nextDirectory}". File manga lama tidak dipindahkan otomatis dan bisa tidak tampil jika belum dipindahkan ke folder baru. Lanjutkan?`,
+      positiveText: 'Ya, Ganti Folder',
+      negativeText: 'Batal',
+      onPositiveClick: () => resolve(true),
+      onNegativeClick: () => resolve(false),
+      onClose: () => resolve(false),
+    })
+  })
+}
+
 const dialogSetConfig = () => {
-  const d = dialog.success({
+  const previousDirectory = mangaDirectory.value
+  const draftDirectory = ref(mangaDirectory.value)
+
+  const d = dialog.info({
     title: 'Set Config Download Manga Directory',
     content: () =>
-      h(NInput, {
-        value: mangaDirectory.value,
-        'onUpdate:value': (v: string) => (mangaDirectory.value = v),
-        placeholder: 'Manga Directory Path',
-        type: 'text',
-      }),
-    positiveText: 'Confirm',
-    onPositiveClick: () => {
+      h('div', { class: 'flex flex-col gap-2' }, [
+        h('div', { class: 'text-sm text-gray-600' }, [
+          'Atur folder utama penyimpanan manga hasil download. Jika Anda mengganti folder, file lama tidak dipindahkan otomatis.',
+        ]),
+        h(NInput, {
+          value: draftDirectory.value,
+          'onUpdate:value': (v: string) => (draftDirectory.value = v),
+          placeholder: 'Manga Directory Path',
+          type: 'text',
+        }),
+        h('div', { class: 'text-xs text-gray-500 break-all' }, [
+          `Folder saat ini: ${previousDirectory || 'Belum di-set'}`,
+        ]),
+      ]),
+    positiveText: 'Simpan',
+    negativeText: 'Batal',
+    onPositiveClick: async () => {
+      const nextDirectory = draftDirectory.value.trim()
+      if (!nextDirectory) {
+        message.error('Manga Directory Path masih kosong')
+        return false
+      }
+
+      const normalizedPrevious = normalizeDirectory(previousDirectory)
+      const normalizedNext = normalizeDirectory(nextDirectory)
+
+      if (
+        normalizedPrevious &&
+        normalizedPrevious !== normalizedNext &&
+        !(await confirmMangaDirectoryChange(previousDirectory, nextDirectory))
+      ) {
+        return false
+      }
+
       d.loading = true
-      return new Promise(resolve => {
-        setMangaDirectory(mangaDirectory.value).then(() => {
-          d.loading = false
-          message.success('Manga Directory saved successfully')
-          resolve(true)
-        })
-      })
+      try {
+        await saveMangaDirectory(nextDirectory)
+        return true
+      } catch (error) {
+        message.error(`${error}`)
+        return false
+      } finally {
+        d.loading = false
+      }
     },
   })
 }

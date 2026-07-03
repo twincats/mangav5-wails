@@ -25,7 +25,6 @@ declare module 'vue' {
     NDivider: typeof import('naive-ui')['NDivider']
     NEmpty: typeof import('naive-ui')['NEmpty']
     NGlobalStyle: typeof import('naive-ui')['NGlobalStyle']
-    NH1: typeof import('naive-ui')['NH1']
     NH2: typeof import('naive-ui')['NH2']
     NH4: typeof import('naive-ui')['NH4']
     NImage: typeof import('naive-ui')['NImage']

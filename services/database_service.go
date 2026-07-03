@@ -238,7 +238,13 @@ func (s *DatabaseService) DeleteScrapingRule(ctx context.Context, siteKey string
 
 // SetConfig sets a configuration value for a given key
 func (s *DatabaseService) SetConfig(ctx context.Context, key, value string) error {
-	return s.configRepo.Set(ctx, key, value)
+	if err := s.configRepo.Set(ctx, key, value); err != nil {
+		return err
+	}
+	if key == "manga_directory" {
+		MANGA_DIR = strings.TrimSpace(value)
+	}
+	return nil
 }
 
 // GetConfig retrieves a configuration object by key
