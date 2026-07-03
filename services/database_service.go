@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"mangav5/internal/models"
 	"mangav5/internal/repo"
 	"os"
@@ -10,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type DatabaseService struct {
@@ -232,6 +236,83 @@ func (s *DatabaseService) DeleteScrapingRule(ctx context.Context, siteKey string
 	return s.scrapingRuleRepo.Delete(ctx, siteKey)
 }
 
+func (s *DatabaseService) OpenScrapingRuleImportFile(ctx context.Context) (string, error) {
+	app := application.Get()
+	if app == nil {
+		return "", errors.New("application not available")
+	}
+
+	dialog := app.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Title: "Import Scraping Rule JSON",
+		Filters: []application.FileFilter{
+			{
+				DisplayName: "JSON Files (*.json)",
+				Pattern:     "*.json",
+			},
+		},
+	})
+
+	selectedPath, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(selectedPath) == "" {
+		return "", nil
+	}
+
+	content, err := os.ReadFile(selectedPath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
+}
+
+func (s *DatabaseService) SaveScrapingRuleExportFile(ctx context.Context, suggestedFilename string, content string) (string, error) {
+	if strings.TrimSpace(content) == "" {
+		return "", errors.New("export content cannot be empty")
+	}
+
+	formattedContent, err := formatJSONForExport(content)
+	if err != nil {
+		return "", err
+	}
+
+	app := application.Get()
+	if app == nil {
+		return "", errors.New("application not available")
+	}
+
+	dialog := app.Dialog.SaveFileWithOptions(&application.SaveFileDialogOptions{
+		Title:    "Export Scraping Rule JSON",
+		Filename: normalizeScrapingRuleExportFilename(suggestedFilename),
+		Filters: []application.FileFilter{
+			{
+				DisplayName: "JSON Files (*.json)",
+				Pattern:     "*.json",
+			},
+		},
+	})
+
+	selectedPath, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(selectedPath) == "" {
+		return "", nil
+	}
+
+	if !strings.EqualFold(filepath.Ext(selectedPath), ".json") {
+		selectedPath += ".json"
+	}
+
+	if err := os.WriteFile(selectedPath, []byte(formattedContent), 0o644); err != nil {
+		return "", err
+	}
+
+	return selectedPath, nil
+}
+
 // =====================
 // Config Methods
 // =====================
@@ -295,4 +376,33 @@ func safeWindowsDirectoryName(input string, maxLen int) string {
 	}
 
 	return s
+}
+
+func formatJSONForExport(content string) (string, error) {
+	var payload any
+	if err := json.Unmarshal([]byte(content), &payload); err != nil {
+		return "", fmt.Errorf("export content is not valid JSON: %w", err)
+	}
+
+	formatted, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(formatted), nil
+}
+
+func normalizeScrapingRuleExportFilename(suggestedFilename string) string {
+	name := strings.TrimSpace(suggestedFilename)
+	if name == "" {
+		name = "scraping-rule"
+	}
+
+	name = strings.TrimSuffix(name, filepath.Ext(name))
+	name = safeWindowsDirectoryName(name, 80)
+	if name == "" {
+		name = "scraping-rule"
+	}
+
+	return name + ".json"
 }

@@ -59,6 +59,24 @@
         >
           Save Rules
         </n-button>
+        <n-button
+          type="primary"
+          secondary
+          @click="importScrapingRule"
+          :loading="isImportingRule"
+          :disabled="isExportingRule"
+        >
+          Import JSON
+        </n-button>
+        <n-button
+          type="primary"
+          secondary
+          @click="exportScrapingRule"
+          :loading="isExportingRule"
+          :disabled="!readyToSave || isImportingRule"
+        >
+          Export JSON
+        </n-button>
         <n-button type="primary" @click="openLoadModal"> Load Rules </n-button>
       </div>
     </div>
@@ -253,6 +271,10 @@ import {
   validateChapterRule,
   isValidPages,
 } from '../utils/validationHelpers'
+import {
+  parseScrapingRuleExchange,
+  stringifyScrapingRuleExchange,
+} from '../utils/scrapingRuleExchange'
 import { setMangaDirectory } from '../utils/configHelper'
 import { safeWindowsDirectoryName } from '../utils/filePathHelper'
 import { NIcon, NInput } from 'naive-ui'
@@ -265,6 +287,8 @@ const message = useMessage()
 const activeTab = ref('editor1')
 const activeOutputTab = ref('result')
 const isScraping = ref(false)
+const isImportingRule = ref(false)
+const isExportingRule = ref(false)
 const scrapingTarget = ref<'manga' | 'chapter' | ''>('')
 const statusJson = reactive({
   manga_rule: false,
@@ -411,14 +435,18 @@ const scrapingRuleDefault = {
 }
 const scrapingRuleInput = reactive({ ...scrapingRuleDefault })
 
+const removeScrapingRuleMetadata = () => {
+  for (const key of ['id', 'created_at', 'updated_at']) {
+    if (key in scrapingRuleInput) {
+      delete (scrapingRuleInput as any)[key]
+    }
+  }
+}
+
 const clearInput = () => {
   // Reset fields to default
   Object.assign(scrapingRuleInput, scrapingRuleDefault)
-  // Remove ID if it exists (from loaded rule)
-  if ('id' in scrapingRuleInput) {
-    delete (scrapingRuleInput as any).id
-  }
-  // Reset ID for validation status as well if needed
+  removeScrapingRuleMetadata()
   statusJson.manga_rule = false
   statusJson.chapter_rule = false
 
@@ -428,6 +456,63 @@ const clearInput = () => {
   resultJson.value = ''
   rawHtml.value = ''
   activeOutputTab.value = 'result'
+}
+
+const importScrapingRule = async () => {
+  if (isImportingRule.value) return
+
+  isImportingRule.value = true
+  try {
+    const content = await DatabaseService.OpenScrapingRuleImportFile()
+    if (!content?.trim()) {
+      return
+    }
+
+    const importedRule = parseScrapingRuleExchange(content)
+    clearInput()
+    Object.assign(scrapingRuleInput, importedRule)
+    removeScrapingRuleMetadata()
+
+    statusJson.manga_rule =
+      validateMangaRule(importedRule.manga_rule_json).length === 0
+    statusJson.chapter_rule =
+      validateChapterRule(importedRule.chapter_rule_json).length === 0
+
+    message.success(
+      'Rule berhasil diimport ke editor. Review dulu lalu klik Save Rules jika ingin menyimpannya ke database.',
+    )
+  } catch (error) {
+    console.error(error)
+    message.error(`${error}`)
+  } finally {
+    isImportingRule.value = false
+  }
+}
+
+const exportScrapingRule = async () => {
+  if (isExportingRule.value) return
+
+  isExportingRule.value = true
+  try {
+    const exportContent = stringifyScrapingRuleExchange(
+      toRaw(scrapingRuleInput),
+    )
+    const exportPath = await DatabaseService.SaveScrapingRuleExportFile(
+      `${scrapingRuleInput.site_key || 'scraping-rule'}.rule`,
+      exportContent,
+    )
+
+    if (!exportPath?.trim()) {
+      return
+    }
+
+    message.success(`Rule berhasil diexport ke ${exportPath}`)
+  } catch (error) {
+    console.error(error)
+    message.error(`${error}`)
+  } finally {
+    isExportingRule.value = false
+  }
 }
 /* ====== SAVE RULES ====== */
 const saveScrapingRules = async () => {

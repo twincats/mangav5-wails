@@ -177,6 +177,10 @@ export function MarkChapterAsRead(chapterID: number): $CancellablePromise<void> 
     return $Call.ByID(3517251945, chapterID);
 }
 
+export function OpenScrapingRuleImportFile(): $CancellablePromise<string> {
+    return $Call.ByID(1015991883);
+}
+
 /**
  * SaveManga inserts a new manga if it doesn't exist, or retrieves the existing one.
  * Returns the manga ID and a boolean indicating if it was newly inserted (true) or retrieved (false).
@@ -187,6 +191,10 @@ export function SaveManga(manga: models$0.Manga): $CancellablePromise<[number, b
 
 export function SaveScrapingRule(rule: models$0.ScrapingRule): $CancellablePromise<void> {
     return $Call.ByID(1443302969, rule);
+}
+
+export function SaveScrapingRuleExportFile(suggestedFilename: string, content: string): $CancellablePromise<string> {
+    return $Call.ByID(2158362657, suggestedFilename, content);
 }
 
 /**
